@@ -1,4 +1,4 @@
-package service
+package filewalker
 
 import (
 	"github.com/VadimGossip/gitPatchTool/internal/domain"

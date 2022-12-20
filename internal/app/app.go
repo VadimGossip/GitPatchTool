@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/sirupsen/logrus"
 	"os"
 )
@@ -31,9 +30,8 @@ func (app *App) Run() {
 	if err != nil {
 		logrus.Fatalf("Fail to init gpt service %s", err)
 	}
-	files, err := app.Factory.walkerService.Walk("e:\\WorkSpace\\TCS_Oracle\\", domain.OracleFileType)
-	if err != nil {
-		logrus.Fatalf("Fail to collect files %s", err)
+
+	if err := app.Factory.oraToolService.CreatePatch(); err != nil {
+		logrus.Fatalf("Patch creation failed with err %s", err)
 	}
-	logrus.Infof("File received %d", len(files))
 }

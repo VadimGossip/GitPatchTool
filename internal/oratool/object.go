@@ -1,4 +1,4 @@
-package domain
+package oratool
 
 import "github.com/VadimGossip/gitPatchTool/internal/domain"
 
