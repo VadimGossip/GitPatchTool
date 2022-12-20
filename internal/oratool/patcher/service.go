@@ -1,8 +1,9 @@
-package oratool
+package patcher
 
 import (
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/filewalker"
+	"github.com/VadimGossip/gitPatchTool/internal/oratool/extractor"
 	"github.com/sirupsen/logrus"
 )
 
@@ -13,12 +14,13 @@ type Service interface {
 
 type service struct {
 	fileWalker filewalker.Service
+	extractor  extractor.Service
 }
 
 var _ Service = (*service)(nil)
 
-func NewService(fileWalker filewalker.Service) *service {
-	return &service{fileWalker: fileWalker}
+func NewService(fileWalker filewalker.Service, extractor extractor.Service) *service {
+	return &service{fileWalker: fileWalker, extractor: extractor}
 }
 
 func (s *service) CreatePatch() error {
@@ -27,7 +29,15 @@ func (s *service) CreatePatch() error {
 	if err != nil {
 		logrus.Fatalf("Fail to collect files %s", err)
 	}
-	logrus.Infof("files count %d", len(files))
+
+	oraObjects := s.extractor.ExtractOracleObjects(files)
+
+	for _, obj := range oraObjects {
+		if len(obj.Errors) > 0 {
+			logrus.Info(obj)
+		}
+	}
+
 	return nil
 }
 

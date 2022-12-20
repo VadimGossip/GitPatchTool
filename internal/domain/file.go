@@ -9,9 +9,3 @@ type File struct {
 	Path string
 	Type int
 }
-
-type OracleObject struct {
-	Name string
-	Path string
-	Type int
-}

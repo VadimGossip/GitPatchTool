@@ -1,6 +1,6 @@
-package oratool
+package domain
 
-import "github.com/VadimGossip/gitPatchTool/internal/domain"
+import "errors"
 
 const (
 	OracleTablespaceType = iota
@@ -27,11 +27,14 @@ const (
 	OracleScriptsMigrationType
 )
 
-type Object struct {
+var UnknownObjectType = errors.New("can't extract object type from folder")
+
+type OracleObject struct {
 	EpicModuleName string
 	ModuleName     string
 	ObjectType     int
 	Schema         string
 	Server         string
-	File           domain.File
+	File           File
+	Errors         []string
 }
