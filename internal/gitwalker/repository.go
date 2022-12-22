@@ -11,7 +11,7 @@ import (
 type Repository interface {
 	GetHeadCommit() (*object.Commit, error)
 	GetPreviousCommit(hashStr string) (*object.Commit, error)
-	GetFilesDiff(from, to *object.Commit) ([]domain.File, error)
+	GetFilesDiff(head, till *object.Commit) ([]domain.File, error)
 }
 
 type repository struct {
@@ -102,18 +102,18 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 	return nil
 }
 
-func (r *repository) GetFilesDiff(from, to *object.Commit) ([]domain.File, error) {
+func (r *repository) GetFilesDiff(head, till *object.Commit) ([]domain.File, error) {
 	files := make([]domain.File, 0)
-	commitIter, err := r.gitRepo.Log(&git.LogOptions{From: from.Hash, Since: &to.Committer.When})
+	commitIter, err := r.gitRepo.Log(&git.LogOptions{From: head.Hash, Since: &till.Committer.When})
 
 	if err := commitIter.ForEach(func(commit *object.Commit) error {
 		if len(commit.ParentHashes) < 2 {
-			err = r.addFileChanges(from, commit, &files)
+			err = r.addFileChanges(head, commit, &files)
 			if err != nil {
 				return err
 			}
 		}
-		from = commit
+		head = commit
 		return nil
 	}); err != nil {
 		return nil, err
