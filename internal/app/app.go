@@ -26,7 +26,13 @@ func NewApp(name, configDir string) *App {
 
 func (app *App) Run() {
 	var err error
-	app.Factory, err = newFactory()
+
+	dbAdapter := NewDBAdapter()
+	if err := dbAdapter.Connect(); err != nil {
+		logrus.Fatalf("Fail to connect db %s", err)
+	}
+
+	app.Factory, err = newFactory(dbAdapter)
 	if err != nil {
 		logrus.Fatalf("Fail to init gpt service %s", err)
 	}
