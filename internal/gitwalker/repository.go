@@ -59,69 +59,6 @@ func (r *repository) GetPreviousCommit(hashStr string) (*object.Commit, error) {
 	return nextCommit, nil
 }
 
-//func (r *repository) GetPreviousCommit(hashStr string) (*object.Commit, error) {
-//	var nextCommit *object.Commit
-//	//	currentHash := plumbing.NewHash(hashStr)
-//
-//	ref, err := r.gitRepo.Head()
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	//rCommit, err := r.gitRepo.CommitObject(ref.Hash())
-//	//if err != nil {
-//	//	return nil, err
-//	//}
-//	//
-//	//var isValid object.CommitFilter = func(commit *object.Commit) bool {
-//	//	//_, ok := seen[commit.Hash]
-//	//
-//	//	// len(commit.ParentHashes) filters out merge commits
-//	//	//return len(commit.ParentHashes) < 2
-//	//	return true
-//	//}
-//
-//	cIter, err := r.gitRepo.Log(&git.LogOptions{From: ref.Hash()})
-//	//cIter := object.NewFilterCommitIter(rCommit, &isValid, nil)
-//
-//	//cIter, err := r.gitRepo.CommitObjects()
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer cIter.Close()
-//
-//	counter := 0
-//	if err := cIter.ForEach(func(commit *object.Commit) error {
-//		if counter < 5 {
-//			logrus.Infof("len(commit.ParentHashes) %d", len(commit.ParentHashes))
-//			logrus.Infof("commit %+v", commit)
-//			commit.Files()
-//		}
-//
-//		if counter == 2 {
-//			nextCommit = commit
-//		}
-//		counter++
-//		return nil
-//	}); err != nil {
-//		return nil, err
-//	}
-//
-//	logrus.Info(nextCommit.Hash.String())
-//	return nextCommit, nil
-//}
-/*
- It seams merge will make some troubles.
- but let's check.
- We need to make patch between to commits
- to always not merged (need to write some code on search)
- from Head
- we need to go from head to from
- and on each step we don't patch if current has > 1 Parent or name Merged(i don't know)
- and on each step from = current
- if we see changes we write them to slice domain.File need to add action
-*/
-
 func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, files *[]domain.File) error {
 	patch, err := currentCommit.Patch(nextCommit)
 	if err != nil {
