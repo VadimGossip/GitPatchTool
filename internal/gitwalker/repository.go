@@ -1,7 +1,7 @@
 package gitwalker
 
 import (
-	"fmt"
+	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -11,7 +11,7 @@ import (
 type Repository interface {
 	GetHeadCommit() (*object.Commit, error)
 	GetPreviousCommit(hashStr string) (*object.Commit, error)
-	GetFilesChanged(form, to *object.Commit) error
+	GetFilesDiff(from, to *object.Commit) ([]domain.File, error)
 }
 
 type repository struct {
@@ -110,28 +110,77 @@ func (r *repository) GetPreviousCommit(hashStr string) (*object.Commit, error) {
 //	logrus.Info(nextCommit.Hash.String())
 //	return nextCommit, nil
 //}
+/*
+ It seams merge will make some troubles.
+ but let's check.
+ We need to make patch between to commits
+ to always not merged (need to write some code on search)
+ from Head
+ we need to go from head to from
+ and on each step we don't patch if current has > 1 Parent or name Merged(i don't know)
+ and on each step from = current
+ if we see changes we write them to slice domain.File need to add action
+*/
 
-func (r *repository) GetFilesChanged(from, to *object.Commit) error {
-	patch, err := from.Patch(to)
+func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, files *[]domain.File) error {
+	patch, err := currentCommit.Patch(nextCommit)
 	if err != nil {
 		return err
 	}
 	for _, val := range patch.FilePatches() {
 		if val != nil {
-			from, to := val.Files()
-			if from != nil && to != nil {
-				if from.Path() != to.Path() {
-					fmt.Printf("File renamed from %s to %s \n", from.Path(), to.Path())
-				} else {
-					fmt.Printf("File changed %s\n", from.Path())
+			fromFile, toFile := val.Files()
+			if fromFile != nil && toFile != nil {
+				file := domain.File{
+					Name:        toFile.Path(),
+					InitialName: fromFile.Path(),
+					Path:        toFile.Path(),
+					Type:        domain.OracleFileType,
 				}
-			} else if from != nil && to == nil {
-				fmt.Printf("File deleted %s\n", from.Path())
-			} else if to != nil && from == nil {
-				fmt.Printf("File created %s\n", to.Path())
+				if fromFile.Path() != toFile.Path() {
+					file.Action = domain.RenameAction
+				} else {
+					file.Action = domain.ModifyAction
+				}
+				*files = append(*files, file)
+			} else if fromFile != nil && toFile == nil {
+				file := domain.File{
+					Name: fromFile.Path(),
+					Path: fromFile.Path(),
+					Type: domain.OracleFileType,
+				}
+				file.Action = domain.DeleteAction
+				*files = append(*files, file)
+			} else if toFile != nil && fromFile == nil {
+				file := domain.File{
+					Name: toFile.Path(),
+					Path: toFile.Path(),
+					Type: domain.OracleFileType,
+				}
+				file.Action = domain.AddAction
+				*files = append(*files, file)
 			}
 		}
 	}
-
 	return nil
+}
+
+func (r *repository) GetFilesDiff(from, to *object.Commit) ([]domain.File, error) {
+	files := make([]domain.File, 0)
+	commitIter, err := r.gitRepo.Log(&git.LogOptions{From: from.Hash, Since: &to.Committer.When})
+
+	if err := commitIter.ForEach(func(commit *object.Commit) error {
+		if len(commit.ParentHashes) < 2 {
+			err = r.addFileChanges(from, commit, &files)
+			if err != nil {
+				return err
+			}
+		}
+		from = commit
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return files, nil
 }
