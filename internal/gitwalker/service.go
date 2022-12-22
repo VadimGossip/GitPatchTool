@@ -20,7 +20,7 @@ func NewService(repository Repository) *service {
 
 func (s *service) Patch() ([]domain.File, error) {
 	//ee9392b1a89fff1ebd9f7148cb4130ffb79c7e6f eb54a89fa224842d5dabe89f615f834193edf0d7 eb54a89fa224842d5dabe89f615f834193edf0d7
-	fromCommit, err := s.repo.GetPreviousCommit("bb160191e85b904be77212cd8316d2d30bfe5e13")
+	fromCommit, err := s.repo.GetPreviousCommit("0b545e25b045b0654e111a3c221b4a031f390de8")
 	if err != nil {
 		return nil, err
 	}
