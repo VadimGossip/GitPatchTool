@@ -27,8 +27,9 @@ const (
 	OracleScriptsMigrationType
 )
 
-var UnknownObjectType = errors.New("can't extract object type from folder")
-var FileNotExists = errors.New("file changed in git commit not exists")
+var UnknownObjectType = errors.New("can't extract object type from folder path")
+var FileNotExists = errors.New("file not exists")
+var SchemaNotFound = errors.New("can't parse schema from file")
 
 type OracleObject struct {
 	EpicModuleName string
