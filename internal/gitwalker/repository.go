@@ -5,7 +5,9 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/sirupsen/logrus"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 type Repository interface {
@@ -34,7 +36,7 @@ func (r *repository) GetHeadCommit() (*object.Commit, error) {
 	if err != nil {
 		return nil, err
 	}
-	logrus.Infof("Head commit hash %s", rCommit.Hash)
+
 	return rCommit, nil
 }
 
@@ -55,7 +57,6 @@ func (r *repository) GetPreviousCommit(hashStr string) (*object.Commit, error) {
 	if err != nil {
 		return nil, err
 	}
-	logrus.Info(nextCommit.Hash.String())
 	return nextCommit, nil
 }
 
@@ -66,35 +67,49 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 	}
 	for _, val := range patch.FilePatches() {
 		if val != nil {
+			var fromFileName, toFileName string
 			fromFile, toFile := val.Files()
+			if fromFile != nil {
+				fromFileName = filepath.Base(fromFile.Path())
+				if filepath.Ext(fromFile.Path()) != ".sql" {
+					fromFile = nil
+				}
+			}
+			if toFile != nil {
+				toFileName = filepath.Base(toFile.Path())
+				if filepath.Ext(toFile.Path()) != ".sql" {
+					toFile = nil
+				}
+			}
+
 			if fromFile != nil && toFile != nil {
 				file := domain.File{
-					Name:        toFile.Path(),
-					InitialName: fromFile.Path(),
-					Path:        toFile.Path(),
+					Name:        fromFileName,
+					InitialName: toFileName,
+					Path:        strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
 					Type:        domain.OracleFileType,
 				}
 				if fromFile.Path() != toFile.Path() {
-					file.Action = domain.RenameAction
+					file.GitAction = domain.RenameAction
 				} else {
-					file.Action = domain.ModifyAction
+					file.GitAction = domain.ModifyAction
 				}
 				*files = append(*files, file)
 			} else if fromFile != nil && toFile == nil {
 				file := domain.File{
-					Name: fromFile.Path(),
-					Path: fromFile.Path(),
+					Name: fromFileName,
+					Path: strings.Replace(fromFile.Path(), "/", string(os.PathSeparator), -1),
 					Type: domain.OracleFileType,
 				}
-				file.Action = domain.DeleteAction
+				file.GitAction = domain.DeleteAction
 				*files = append(*files, file)
 			} else if toFile != nil && fromFile == nil {
 				file := domain.File{
-					Name: toFile.Path(),
-					Path: toFile.Path(),
+					Name: toFileName,
+					Path: strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
 					Type: domain.OracleFileType,
 				}
-				file.Action = domain.AddAction
+				file.GitAction = domain.AddAction
 				*files = append(*files, file)
 			}
 		}

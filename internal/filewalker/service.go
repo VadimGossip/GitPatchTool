@@ -7,6 +7,8 @@ import (
 )
 
 type Service interface {
+	CheckFileExists(path string) bool
+	LostFiles(allList, searchList []domain.File) []domain.File
 	Walk(path string, fileType int) ([]domain.File, error)
 }
 
@@ -17,6 +19,31 @@ var _ Service = (*service)(nil)
 
 func NewService() *service {
 	return &service{}
+}
+
+func (s *service) LostFiles(allList, searchList []domain.File) []domain.File {
+	allMap := make(map[string]struct{})
+	result := make([]domain.File, 0)
+
+	for _, file := range allList {
+		allMap[file.Path] = struct{}{}
+	}
+
+	for _, sFile := range searchList {
+		if _, ok := allMap[sFile.Path]; !ok {
+			result = append(result, sFile)
+		}
+	}
+
+	return result
+}
+
+func (s *service) CheckFileExists(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }
 
 func (s *service) Walk(path string, fileType int) ([]domain.File, error) {

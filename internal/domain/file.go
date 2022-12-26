@@ -16,5 +16,5 @@ type File struct {
 	InitialName string
 	Path        string
 	Type        int
-	Action      int
+	GitAction   int
 }

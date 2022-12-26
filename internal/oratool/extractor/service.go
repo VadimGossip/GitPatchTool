@@ -2,21 +2,24 @@ package extractor
 
 import (
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
+	"github.com/VadimGossip/gitPatchTool/internal/filewalker"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 type Service interface {
-	ExtractOracleObjects(files []domain.File) []domain.OracleObject
+	ExtractOracleObjects(rootDir string, files []domain.File) []domain.OracleObject
 }
 
 type service struct {
+	fileWalker filewalker.Service
 }
 
 var _ Service = (*service)(nil)
 
-func NewService() *service {
-	return &service{}
+func NewService(fileWalker filewalker.Service) *service {
+	return &service{fileWalker: fileWalker}
 }
 
 func (s *service) getObjectTypeFromDir(objectTypeDir string) (int, error) {
@@ -48,26 +51,41 @@ func (s *service) getObjectTypeFromDir(objectTypeDir string) (int, error) {
 	return 0, domain.UnknownObjectType
 }
 
-func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObject {
+func (s *service) writeError(obj *domain.OracleObject, err error) {
+	if err != nil {
+		obj.Errors = append(obj.Errors, err.Error())
+	}
+}
+
+func (s *service) ExtractOracleObjects(rootDir string, files []domain.File) []domain.OracleObject {
 	var err error
 	result := make([]domain.OracleObject, 0, len(files))
 	for _, file := range files {
-		parts := strings.Split(file.Path, string(os.PathSeparator))
-		if len(parts) >= 4 {
-			obj := domain.OracleObject{
-				EpicModuleName: parts[len(parts)-4],
-				ModuleName:     parts[len(parts)-3],
-				ObjectType:     0,
-				Schema:         "",
-				Server:         "",
-				File:           file,
-			}
-			obj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2])
-			if err != nil {
-				obj.Errors = append(obj.Errors, err.Error())
-			}
+		obj := domain.OracleObject{File: file}
+		if !s.fileWalker.CheckFileExists(rootDir+file.Path) && file.GitAction != domain.DeleteAction {
+			s.writeError(&obj, domain.FileNotExists)
 			result = append(result, obj)
+			continue
 		}
+
+		parts := strings.Split(file.Path, string(os.PathSeparator))
+		if len(parts) > 0 && parts[0] == "install" {
+			continue
+		}
+
+		if len(parts) < 4 {
+			s.writeError(&obj, domain.UnknownObjectType)
+			result = append(result, obj)
+			continue
+		}
+		obj.EpicModuleName = parts[len(parts)-4]
+		obj.ModuleName = parts[len(parts)-3]
+		obj.ObjectName = file.Name[:len(file.Name)-len(filepath.Ext(file.Name))]
+		obj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2])
+		if err != nil {
+			obj.Errors = append(obj.Errors, err.Error())
+		}
+		result = append(result, obj)
 	}
 
 	return result
