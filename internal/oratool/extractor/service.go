@@ -3,13 +3,14 @@ package extractor
 import (
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/filewalker"
+	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
 type Service interface {
-	ExtractOracleObjects(rootDir string, files []domain.File) []domain.OracleObject
+	ExtractOracleObjects(files []domain.File) []domain.OracleObject
 }
 
 type service struct {
@@ -57,18 +58,29 @@ func (s *service) writeError(obj *domain.OracleObject, err error) {
 	}
 }
 
-func (s *service) ExtractOracleObjects(rootDir string, files []domain.File) []domain.OracleObject {
-	var err error
+func (s *service) GetSchema() []header {
+	return nil
+}
+
+func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObject {
 	result := make([]domain.OracleObject, 0, len(files))
 	for _, file := range files {
 		obj := domain.OracleObject{File: file}
-		if !s.fileWalker.CheckFileExists(rootDir+file.Path) && file.GitAction != domain.DeleteAction {
+		if !s.fileWalker.CheckFileExists(file.Path) && file.GitAction != domain.DeleteAction {
 			s.writeError(&obj, domain.FileNotExists)
 			result = append(result, obj)
 			continue
 		}
 
-		parts := strings.Split(file.Path, string(os.PathSeparator))
+		schema, err := s.fileWalker.SearchStrInFile("schema", file.Path)
+		if err != nil {
+			s.writeError(&obj, domain.FileNotExists)
+			result = append(result, obj)
+			continue
+		}
+		logrus.Info(schema)
+
+		parts := strings.Split(file.ShortPath, string(os.PathSeparator))
 		if len(parts) > 0 && parts[0] == "install" {
 			continue
 		}

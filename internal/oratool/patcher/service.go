@@ -28,7 +28,7 @@ func (s *service) CreatePatch() error {
 		return err
 	}
 	logrus.Info(gitFiles)
-	oracleFiles := s.extractor.ExtractOracleObjects("e:\\WorkSpace\\TCS_Oracle\\", gitFiles)
+	oracleFiles := s.extractor.ExtractOracleObjects(gitFiles)
 
 	logrus.Infof("oracleFiles %+v", oracleFiles)
 

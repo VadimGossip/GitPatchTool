@@ -17,13 +17,14 @@ type Repository interface {
 }
 
 type repository struct {
+	rootDir string
 	gitRepo *git.Repository
 }
 
 var _ Repository = (*repository)(nil)
 
-func NewRepository(gitRepo *git.Repository) *repository {
-	return &repository{gitRepo: gitRepo}
+func NewRepository(rootDir string, gitRepo *git.Repository) *repository {
+	return &repository{rootDir: rootDir, gitRepo: gitRepo}
 }
 
 func (r *repository) GetHeadCommit() (*object.Commit, error) {
@@ -86,7 +87,8 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 				file := domain.File{
 					Name:        fromFileName,
 					InitialName: toFileName,
-					Path:        strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
+					Path:        strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
+					ShortPath:   strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
 					Type:        domain.OracleFileType,
 				}
 				if fromFile.Path() != toFile.Path() {
@@ -97,17 +99,19 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 				*files = append(*files, file)
 			} else if fromFile != nil && toFile == nil {
 				file := domain.File{
-					Name: fromFileName,
-					Path: strings.Replace(fromFile.Path(), "/", string(os.PathSeparator), -1),
-					Type: domain.OracleFileType,
+					Name:      fromFileName,
+					Path:      strings.Replace(r.rootDir+fromFile.Path(), "/", string(os.PathSeparator), -1),
+					ShortPath: strings.Replace(fromFile.Path(), "/", string(os.PathSeparator), -1),
+					Type:      domain.OracleFileType,
 				}
 				file.GitAction = domain.DeleteAction
 				*files = append(*files, file)
 			} else if toFile != nil && fromFile == nil {
 				file := domain.File{
-					Name: toFileName,
-					Path: strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
-					Type: domain.OracleFileType,
+					Name:      toFileName,
+					Path:      strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
+					ShortPath: strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
+					Type:      domain.OracleFileType,
 				}
 				file.GitAction = domain.AddAction
 				*files = append(*files, file)

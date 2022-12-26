@@ -1,13 +1,16 @@
 package filewalker
 
 import (
+	"bufio"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Service interface {
 	CheckFileExists(path string) bool
+	SearchStrInFile(starts, path string) (string, error)
 	LostFiles(allList, searchList []domain.File) []domain.File
 	Walk(path string, fileType int) ([]domain.File, error)
 }
@@ -44,6 +47,25 @@ func (s *service) CheckFileExists(path string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+func (s *service) SearchStrInFile(starts, path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if strings.Contains(strings.ToLower(scanner.Text()), starts) {
+			return strings.ToLower(scanner.Text()), nil
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	return "", nil
 }
 
 func (s *service) Walk(path string, fileType int) ([]domain.File, error) {

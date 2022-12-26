@@ -20,6 +20,6 @@ func (d *DBAdapter) Connect() error {
 	if err != nil {
 		return fmt.Errorf("error while opening git repo %s", err)
 	}
-	d.gitWalkerRepo = gitwalker.NewRepository(gitRepo)
+	d.gitWalkerRepo = gitwalker.NewRepository("e:\\WorkSpace\\TCS_Oracle\\", gitRepo)
 	return nil
 }
