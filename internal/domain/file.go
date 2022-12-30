@@ -12,10 +12,12 @@ const (
 )
 
 type File struct {
-	Name        string
-	InitialName string
-	ShortPath   string
-	Path        string
-	Type        int
-	GitAction   int
+	Name             string
+	ShortPath        string
+	Path             string
+	InitialName      string
+	InitialShortPath string
+	InitialPath      string
+	Type             int
+	GitAction        int
 }

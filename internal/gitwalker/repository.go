@@ -90,17 +90,27 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 			}
 
 			if fromFile != nil && toFile != nil {
-				file := domain.File{
-					Name:        fromFileName,
-					InitialName: toFileName,
-					Path:        strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
-					ShortPath:   strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
-					Type:        domain.OracleFileType,
-				}
+				file := domain.File{}
 				if fromFile.Path() != toFile.Path() {
+					file = domain.File{
+						Name:             toFileName,
+						ShortPath:        strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
+						Path:             strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
+						InitialName:      fromFileName,
+						InitialShortPath: strings.Replace(fromFile.Path(), "/", string(os.PathSeparator), -1),
+						InitialPath:      strings.Replace(r.rootDir+fromFile.Path(), "/", string(os.PathSeparator), -1),
+						Type:             domain.OracleFileType,
+						GitAction:        domain.RenameAction,
+					}
 					file.GitAction = domain.RenameAction
 				} else {
-					file.GitAction = domain.ModifyAction
+					file = domain.File{
+						Name:      toFileName,
+						ShortPath: strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
+						Path:      strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
+						Type:      domain.OracleFileType,
+						GitAction: domain.ModifyAction,
+					}
 				}
 				r.appendFiles(files, file)
 			} else if fromFile != nil && toFile == nil {
@@ -109,8 +119,8 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 					Path:      strings.Replace(r.rootDir+fromFile.Path(), "/", string(os.PathSeparator), -1),
 					ShortPath: strings.Replace(fromFile.Path(), "/", string(os.PathSeparator), -1),
 					Type:      domain.OracleFileType,
+					GitAction: domain.DeleteAction,
 				}
-				file.GitAction = domain.DeleteAction
 				r.appendFiles(files, file)
 			} else if toFile != nil && fromFile == nil {
 				file := domain.File{
@@ -118,8 +128,8 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 					Path:      strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
 					ShortPath: strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
 					Type:      domain.OracleFileType,
+					GitAction: domain.AddAction,
 				}
-				file.GitAction = domain.AddAction
 				r.appendFiles(files, file)
 			}
 		}
