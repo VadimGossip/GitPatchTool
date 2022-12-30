@@ -58,7 +58,51 @@ func (s *service) writeError(obj *domain.OracleObject, err error) {
 	}
 }
 
-func (s *service) GetSchema() []header {
+func (s *service) addHeader(headersMap map[objectHeader]struct{}, headerStr string) {
+	if headerStr == "core" {
+		headersMap[objectHeader{
+			server: "core",
+			schema: "vtbs",
+		}] = struct{}{}
+	} else if headerStr == "charger" || headerStr == "hpffm" {
+		headersMap[objectHeader{
+			server: "hpffm",
+			schema: "vtbs",
+		}] = struct{}{}
+	} else if headerStr == "vtbs_bi" {
+		headersMap[objectHeader{
+			server: "hpffm",
+			schema: "vtbs_bi",
+		}] = struct{}{}
+	} else if headerStr == "vtbs_x_alaris" || headerStr == "xalaris" {
+		headersMap[objectHeader{
+			server: "hpffm",
+			schema: "vtbs_x_alaris",
+		}] = struct{}{}
+	} else if headerStr == "adesk" || headerStr == "vtbs_adesk" || headerStr == "reporter" {
+		headersMap[objectHeader{
+			server: "hpffm",
+			schema: "vtbs_adesk",
+		}] = struct{}{}
+	}
+}
+
+func (s *service) parseSchema(schemaStr string) map[objectHeader]struct{} {
+	schemaStr = strings.ToLower(schemaStr)
+	schemaStr = strings.Replace(schemaStr, "schema", "", -1)
+	schemaStr = strings.Replace(schemaStr, ":", "", -1)
+	schemaStr = strings.Replace(schemaStr, " ", "", -1)
+	schemaStr = strings.Replace(schemaStr, "--", "", -1)
+	schemaStr = strings.Replace(schemaStr, "/", ",", -1)
+	schemaStr = strings.Replace(schemaStr, "\\", ",", -1)
+	if len(schemaStr) > 0 {
+		parts := strings.Split(schemaStr, ",")
+		result := make(map[objectHeader]struct{})
+		for _, val := range parts {
+			s.addHeader(result, val)
+		}
+		return result
+	}
 	return nil
 }
 
@@ -78,7 +122,7 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 			result = append(result, obj)
 			continue
 		}
-		logrus.Info(schema)
+		logrus.Info(s.parseSchema(schema))
 
 		parts := strings.Split(file.ShortPath, string(os.PathSeparator))
 		if len(parts) < 4 {

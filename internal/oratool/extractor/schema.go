@@ -1,6 +1,6 @@
 package extractor
 
-type header struct {
+type objectHeader struct {
 	server string
 	schema string
 }
