@@ -61,6 +61,12 @@ func (r *repository) GetPreviousCommit(hashStr string) (*object.Commit, error) {
 	return nextCommit, nil
 }
 
+func (r *repository) appendFiles(files *[]domain.File, file domain.File) {
+	if strings.Split(file.ShortPath, string(os.PathSeparator))[0] != "install" {
+		*files = append(*files, file)
+	}
+}
+
 func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, files *[]domain.File) error {
 	patch, err := currentCommit.Patch(nextCommit)
 	if err != nil {
@@ -96,7 +102,7 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 				} else {
 					file.GitAction = domain.ModifyAction
 				}
-				*files = append(*files, file)
+				r.appendFiles(files, file)
 			} else if fromFile != nil && toFile == nil {
 				file := domain.File{
 					Name:      fromFileName,
@@ -105,7 +111,7 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 					Type:      domain.OracleFileType,
 				}
 				file.GitAction = domain.DeleteAction
-				*files = append(*files, file)
+				r.appendFiles(files, file)
 			} else if toFile != nil && fromFile == nil {
 				file := domain.File{
 					Name:      toFileName,
@@ -114,7 +120,7 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 					Type:      domain.OracleFileType,
 				}
 				file.GitAction = domain.AddAction
-				*files = append(*files, file)
+				r.appendFiles(files, file)
 			}
 		}
 	}

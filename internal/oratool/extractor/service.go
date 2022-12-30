@@ -81,10 +81,6 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 		logrus.Info(schema)
 
 		parts := strings.Split(file.ShortPath, string(os.PathSeparator))
-		if len(parts) > 0 && parts[0] == "install" {
-			continue
-		}
-
 		if len(parts) < 4 {
 			s.writeError(&obj, domain.UnknownObjectType)
 			result = append(result, obj)
