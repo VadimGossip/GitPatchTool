@@ -27,15 +27,11 @@ func (s *service) CreatePatch() error {
 	if err != nil {
 		return err
 	}
-	logrus.Info(gitFiles)
 	oracleFiles := s.extractor.ExtractOracleObjects(gitFiles)
 
-	logrus.Infof("oracleFiles %+v", oracleFiles)
-
-	//folderFiles, err := s.fileWalker.Walk("e:\\WorkSpace\\TCS_Oracle\\", domain.OracleFileType)
-	//if err != nil {
-	//	logrus.Fatalf("Fail to collect files %s", err)
-	//}
+	for _, val := range oracleFiles {
+		logrus.Infof("file %+v", val)
+	}
 
 	return nil
 }

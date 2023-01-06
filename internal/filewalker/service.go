@@ -13,6 +13,7 @@ type Service interface {
 	SearchStrInFile(starts, path string) (string, error)
 	LostFiles(allList, searchList []domain.File) []domain.File
 	Walk(path string, fileType int) ([]domain.File, error)
+	CreateFile(name string, lines []string) error
 }
 
 type service struct {
@@ -93,4 +94,22 @@ func (s *service) Walk(path string, fileType int) ([]domain.File, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func (s *service) CreateFile(name string, lines []string) error {
+	f, err := os.Create(name)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	for _, line := range lines {
+		_, err = f.WriteString(line + "\n")
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

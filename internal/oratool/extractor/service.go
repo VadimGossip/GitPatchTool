@@ -3,7 +3,6 @@ package extractor
 import (
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/filewalker"
-	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,36 +57,36 @@ func (s *service) writeError(obj *domain.OracleObject, err error) {
 	}
 }
 
-func (s *service) addHeader(headersMap map[objectHeader]struct{}, headerStr string) {
+func (s *service) addHeader(headersMap map[serverSchema]struct{}, headerStr string) {
 	if headerStr == "core" {
-		headersMap[objectHeader{
+		headersMap[serverSchema{
 			server: "core",
 			schema: "vtbs",
 		}] = struct{}{}
 	} else if headerStr == "charger" || headerStr == "hpffm" {
-		headersMap[objectHeader{
+		headersMap[serverSchema{
 			server: "hpffm",
 			schema: "vtbs",
 		}] = struct{}{}
 	} else if headerStr == "vtbs_bi" {
-		headersMap[objectHeader{
+		headersMap[serverSchema{
 			server: "hpffm",
 			schema: "vtbs_bi",
 		}] = struct{}{}
 	} else if headerStr == "vtbs_x_alaris" || headerStr == "xalaris" {
-		headersMap[objectHeader{
+		headersMap[serverSchema{
 			server: "hpffm",
 			schema: "vtbs_x_alaris",
 		}] = struct{}{}
 	} else if headerStr == "adesk" || headerStr == "vtbs_adesk" || headerStr == "reporter" {
-		headersMap[objectHeader{
+		headersMap[serverSchema{
 			server: "hpffm",
 			schema: "vtbs_adesk",
 		}] = struct{}{}
 	}
 }
 
-func (s *service) parseSchema(schemaStr string) map[objectHeader]struct{} {
+func (s *service) parseSchema(schemaStr string) map[serverSchema]struct{} {
 	schemaStr = strings.ToLower(schemaStr)
 	schemaStr = strings.Replace(schemaStr, "schema", "", -1)
 	schemaStr = strings.Replace(schemaStr, ":", "", -1)
@@ -97,7 +96,7 @@ func (s *service) parseSchema(schemaStr string) map[objectHeader]struct{} {
 	schemaStr = strings.Replace(schemaStr, "\\", ",", -1)
 	if len(schemaStr) > 0 {
 		parts := strings.Split(schemaStr, ",")
-		result := make(map[objectHeader]struct{})
+		result := make(map[serverSchema]struct{})
 		for _, val := range parts {
 			s.addHeader(result, val)
 		}
@@ -122,7 +121,6 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 			result = append(result, obj)
 			continue
 		}
-		logrus.Info(s.parseSchema(schema))
 
 		parts := strings.Split(file.ShortPath, string(os.PathSeparator))
 		if len(parts) < 4 {
@@ -137,7 +135,11 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 		if err != nil {
 			obj.Errors = append(obj.Errors, err.Error())
 		}
-		result = append(result, obj)
+		for key := range s.parseSchema(schema) {
+			obj.Server = key.server
+			obj.Schema = key.schema
+			result = append(result, obj)
+		}
 	}
 
 	return result

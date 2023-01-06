@@ -42,3 +42,8 @@ type OracleObject struct {
 	Errors         []string
 	InstallOrder   int
 }
+
+type OracleObjectServerSchema struct {
+	server string
+	schema string
+}
