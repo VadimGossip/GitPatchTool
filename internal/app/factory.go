@@ -27,7 +27,7 @@ func newFactory(cfg *domain.Config, dbAdapter *DBAdapter) (*Factory, error) {
 	factory.gitWalkerService = gitwalker.NewService(dbAdapter.gitWalkerRepo)
 	factory.fileWalkerService = filewalker.NewService()
 	factory.oraToolExtractor = extractor.NewService(factory.fileWalkerService)
-	factory.oraToolSplitter = splitter.NewService(cfg, factory.oraToolExtractor)
+	factory.oraToolSplitter = splitter.NewService(cfg, factory.fileWalkerService, factory.oraToolExtractor)
 	factory.oraToolPatcher = patcher.NewService(cfg, factory.gitWalkerService, factory.oraToolExtractor)
 	return factory, nil
 }

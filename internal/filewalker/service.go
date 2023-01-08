@@ -50,8 +50,8 @@ func (s *service) CheckFileExists(path string) bool {
 	return !info.IsDir()
 }
 
-func (s *service) SearchStrInFile(starts, path string) (string, error) {
-	f, err := os.Open(path)
+func (s *service) SearchStrInFile(searchStr, filePath string) (string, error) {
+	f, err := os.Open(filePath)
 	if err != nil {
 		return "", err
 	}
@@ -59,7 +59,7 @@ func (s *service) SearchStrInFile(starts, path string) (string, error) {
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		if strings.Contains(strings.ToLower(scanner.Text()), starts) {
+		if strings.Contains(strings.ToLower(scanner.Text()), searchStr) {
 			return strings.ToLower(scanner.Text()), nil
 		}
 	}
