@@ -56,7 +56,7 @@ func (s *service) markFileLines(fileLines []string) (map[string][]int, error) {
 		}
 
 		parts := strings.Split(resultStr, " ")
-		if len(parts) > 4 && (parts[2] == "index" || parts[1] == "index") && strings.HasSuffix(parts[len(parts)-1], stopElement) {
+		if len(parts) > 4 && parts[4] == "on" && (parts[2] == "index" || parts[1] == "index") && strings.HasSuffix(parts[len(parts)-1], stopElement) {
 			for i := idx; i < idx+len(foundLines); i++ {
 				markedMap[parts[3]] = append(markedMap[parts[3]], i)
 			}
