@@ -32,36 +32,39 @@ type file struct {
 	text []string
 }
 
-func (s *service) markLinesByTmpl(startPos int, currentLine string, foundLines *[]string, markedMap map[string][]int) error {
+func (s *service) markFileLines(fileLines []string) (map[string][]int, error) {
 	stopElement := ";"
 	searchTmpl := []string{"create", "any", "index", "any", "on", "any", "any", "any"}
+	foundLines := make([]string, 0)
+	markedMap := make(map[string][]int)
 
-	if strings.HasPrefix(currentLine, searchTmpl[0]) {
-		foundLines = &[]string{currentLine}
-	} else {
-		*foundLines = append(*foundLines, currentLine)
-	}
+	for idx, fileLine := range fileLines {
+		tmpFileLine := strings.TrimSpace(strings.ToLower(fileLine))
 
-	resultStr := ""
-	for _, str := range *foundLines {
-		if resultStr == "" {
-			resultStr = strings.TrimSpace(str)
+		if strings.HasPrefix(tmpFileLine, searchTmpl[0]) {
+			foundLines = []string{tmpFileLine}
+		} else {
+			foundLines = append(foundLines, tmpFileLine)
 		}
-		resultStr += " " + strings.TrimSpace(str)
-	}
 
-	parts := strings.Split(resultStr, " ")
-	if (parts[2] == "index" || parts[1] == "index") && strings.HasSuffix(parts[len(parts)-1], stopElement) {
-
-		for i := startPos; i <= len(*foundLines); i++ {
-			markedMap[parts[3]] = append(markedMap[parts[3]], i)
+		resultStr := ""
+		for _, str := range foundLines {
+			if resultStr == "" {
+				resultStr = strings.TrimSpace(str)
+			}
+			resultStr += " " + strings.TrimSpace(str)
 		}
-		fmt.Println(resultStr)
-		foundLines = &[]string{}
 
+		parts := strings.Split(resultStr, " ")
+		if len(parts) > 4 && (parts[2] == "index" || parts[1] == "index") && strings.HasSuffix(parts[len(parts)-1], stopElement) {
+			for i := idx; i < idx+len(foundLines); i++ {
+				markedMap[parts[3]] = append(markedMap[parts[3]], i)
+			}
+			fmt.Println(resultStr)
+			foundLines = nil
+		}
 	}
-
-	return nil
+	return markedMap, nil
 }
 
 func (s *service) SplitTableFiles() error {
@@ -95,111 +98,7 @@ func (s *service) SplitTableFiles() error {
 		fileLines = append(fileLines, scanner.Text())
 	}
 
-	//	searchTmpl := []string{"create", "any", "index", "any", "on", "any", "any", "any", ";"}
-
-	foundLines := make([]string, 0)
-	markedMap := make(map[string][]int)
-	for idx, fileLine := range fileLines {
-		tmpFileLine := strings.TrimSpace(strings.ToLower(fileLine))
-		s.markLinesByTmpl(idx, tmpFileLine, &foundLines, markedMap)
-		for _, x := range foundLines {
-			fmt.Println(x)
-		}
-
-	}
-
-	//for idx, fileLine := range fileLines {
-	//	//tmpFileLine := regexp.MustCompile(`\s+`).ReplaceAllString(fileLine, " ")
-	//	//fmt.Println(tmpFileLine)
-	//	tmpFileLine := strings.TrimSpace(strings.ToLower(fileLine))
-	//	s.markLinesByTmpl(idx, tmpFileLine, &foundLines, markedMap)
-	//	////if len(foundLines) > 0 {
-	//	////   for _, str := range foundLines{
-	//	////	   if tmpStr == ""{
-	//	////		   tmpStr = str
-	//	////	   }
-	//	////	   tmpStr += " "+str
-	//	////   }
-	//	////}
-	//	////
-	//	////parts := strings.Split(tmpFileLine, string(os.PathSeparator))
-	//	//
-	//	//if len(foundLines) > 0 && !strings.HasPrefix(tmpFileLine, searchTmpl[0]) ||
-	//	//	len(foundLines) == 0 && strings.HasPrefix(tmpFileLine, searchTmpl[0]) {
-	//	//
-	//	//	foundLines = append(foundLines, tmpFileLine)
-	//	//	resultStr = ""
-	//	//	for _, str := range foundLines {
-	//	//		if resultStr == "" {
-	//	//			resultStr = strings.TrimSpace(str)
-	//	//		}
-	//	//		resultStr += " " + strings.TrimSpace(str)
-	//	//	}
-	//	//
-	//	//	parts := strings.Split(resultStr, " ")
-	//	//	for idx, val := range parts {
-	//	//		fmt.Printf("idx %d val %s\n", idx, val)
-	//	//	}
-	//	//	fmt.Printf("last %s\n ", parts[len(parts)-1])
-	//	//	if (parts[2] == "index" || parts[1] == "index") && strings.HasSuffix(parts[len(parts)-1], ";") {
-	//	//		foundLines = nil
-	//	//		fmt.Println("Nice")
-	//	//	}
-	//	//
-	//	//	//fmt.Println(foundLines)
-	//	//	//|| parts[2] == "index") && strings.HasSuffix(parts[len(parts)-1], ";")
-	//	//	//for _, v := range parts {
-	//	//	//	fmt.Println(v)
-	//	//	//}
-	//	//	//
-	//	//	//fmt.Println()
-	//	//	//fmt.Println(parts)
-	//	//	//fmt.Printf("last of parts %s", parts[len(parts)-1])
-	//	//	//fmt.Println()
-	//	//
-	//	//	//if parts[2] == "index" || parts[1] == "index" {
-	//	//	//	//fmt.Printf("last of parts %s", parts[len(parts)-1])
-	//	//	//	fmt.Println(resultStr)
-	//	//	//} else {
-	//	//	//
-	//	//	//}
-	//	//
-	//	//} else {
-	//	//	foundLines = nil
-	//	//}
-	//
-	//	//if strings.HasPrefix(tmpFileLine, searchTmpl[0]) {
-	//	//	if len(foundLines) == 0 {
-	//	//		foundLines = append(foundLines, fileLine)
-	//	//		if tmpFileLine[len[tmpFileLine]-1] == searchTmpl[0]
-	//	//
-	//	//	} else {
-	//	//		foundLines = nil
-	//	//	}
-	//	//}
-	//
-	//	//if len(foundLines) == 3
-	//	//
-	//	//if len(searchLines) == 0 && strings.HasPrefix(fileLines[idx], searchTmpl[0]) {
-	//	//	searchLines = append()
-	//	//} else if len(searchLines) > 0 {
-	//	//	if strings.HasSuffix(fileLines[idx], searchTmpl[len(searchTmpl) - 1]) {
-	//	//
-	//	//	}
-	//	//}
-	//
-	//	//for sIdx := range searchTmpl {
-	//	//	if idx + sIdx + 1 > len(fileLines) {
-	//	//		break
-	//	//	}
-	//	//	if strings.HasPrefix(fileLines[idx + sIdx], searchTmpl[sIdx]) {
-	//	//
-	//	//	}
-	//	//}
-	//	//if strings.HasPrefix(fileLine, searchTmpl[0]) {
-	//	//	newLine
-	//	//}
-	//}
-
+	res, err := s.markFileLines(fileLines)
+	fmt.Println(res)
 	return nil
 }
