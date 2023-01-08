@@ -1,6 +1,7 @@
 package patcher
 
 import (
+	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/gitwalker"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/extractor"
 	"github.com/sirupsen/logrus"
@@ -12,18 +13,19 @@ type Service interface {
 }
 
 type service struct {
+	cfg       *domain.Config
 	gitWalker gitwalker.Service
 	extractor extractor.Service
 }
 
 var _ Service = (*service)(nil)
 
-func NewService(gitWalker gitwalker.Service, extractor extractor.Service) *service {
-	return &service{gitWalker: gitWalker, extractor: extractor}
+func NewService(cfg *domain.Config, gitWalker gitwalker.Service, extractor extractor.Service) *service {
+	return &service{cfg: cfg, gitWalker: gitWalker, extractor: extractor}
 }
 
 func (s *service) CreatePatch() error {
-	gitFiles, err := s.gitWalker.GetFilesChanged("9b7c2a074bfbf22256b3728629182fe9686c9773")
+	gitFiles, err := s.gitWalker.GetFilesChanged(s.cfg.CommitId)
 	if err != nil {
 		return err
 	}

@@ -18,19 +18,6 @@ func NewService(repository Repository) *service {
 	return &service{repo: repository}
 }
 
-/*
-  A add -> A del  A del
-  A del -> A add  A add
-  A add -> A ch   A add
-  A ch  -> A del  A del
-  A ren A1 -> A del \ A1 add
-
-
-
-
-
-*/
-
 func (s *service) leaveLastState(files []domain.File) []domain.File {
 	fkMap := make(map[string]int)
 	resultMap := make(map[domain.File]struct{})
