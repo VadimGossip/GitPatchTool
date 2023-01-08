@@ -10,6 +10,7 @@ import (
 
 type Service interface {
 	ExtractOracleObjects(files []domain.File) []domain.OracleObject
+	WalkAndExtractOracleObjects(rootDir string) ([]domain.OracleObject, error)
 }
 
 type service struct {
@@ -106,21 +107,22 @@ func (s *service) parseSchema(schemaStr string) map[serverSchema]struct{} {
 }
 
 func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObject {
+	var err error
 	result := make([]domain.OracleObject, 0, len(files))
 	for _, file := range files {
 		obj := domain.OracleObject{File: file}
-		if !s.fileWalker.CheckFileExists(file.Path) && file.GitAction != domain.DeleteAction {
-			s.writeError(&obj, domain.FileNotExists)
-			result = append(result, obj)
-			continue
-		}
+		//if !s.fileWalker.CheckFileExists(file.Path) && file.GitAction != domain.DeleteAction {
+		//	s.writeError(&obj, domain.FileNotExists)
+		//	result = append(result, obj)
+		//	continue
+		//}
 
-		schema, err := s.fileWalker.SearchStrInFile("schema", file.Path)
-		if err != nil {
-			s.writeError(&obj, domain.FileNotExists)
-			result = append(result, obj)
-			continue
-		}
+		//schema, err := s.fileWalker.SearchStrInFile("schema", file.Path)
+		//if err != nil {
+		//	s.writeError(&obj, domain.FileNotExists)
+		//	result = append(result, obj)
+		//	continue
+		//}
 
 		parts := strings.Split(file.ShortPath, string(os.PathSeparator))
 		if len(parts) < 4 {
@@ -135,12 +137,21 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 		if err != nil {
 			obj.Errors = append(obj.Errors, err.Error())
 		}
-		for key := range s.parseSchema(schema) {
-			obj.Server = key.server
-			obj.Schema = key.schema
-			result = append(result, obj)
-		}
+		//for key := range s.parseSchema(schema) {
+		//	obj.Server = key.server
+		//	obj.Schema = key.schema
+		//	result = append(result, obj)
+		//}
+		result = append(result, obj)
 	}
 
 	return result
+}
+
+func (s *service) WalkAndExtractOracleObjects(rootDir string) ([]domain.OracleObject, error) {
+	files, err := s.fileWalker.Walk(rootDir, domain.OracleFileType)
+	if err != nil {
+		return nil, err
+	}
+	return s.ExtractOracleObjects(files), nil
 }

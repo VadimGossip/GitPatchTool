@@ -6,6 +6,7 @@ import (
 	"github.com/VadimGossip/gitPatchTool/internal/gitwalker"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/extractor"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/patcher"
+	"github.com/VadimGossip/gitPatchTool/internal/oratool/splitter"
 )
 
 type Factory struct {
@@ -15,7 +16,8 @@ type Factory struct {
 	fileWalkerService filewalker.Service
 
 	oraToolExtractor extractor.Service
-	oraToolService   patcher.Service
+	oraToolPatcher   patcher.Service
+	oraToolSplitter  splitter.Service
 }
 
 var factory *Factory
@@ -25,6 +27,7 @@ func newFactory(cfg *domain.Config, dbAdapter *DBAdapter) (*Factory, error) {
 	factory.gitWalkerService = gitwalker.NewService(dbAdapter.gitWalkerRepo)
 	factory.fileWalkerService = filewalker.NewService()
 	factory.oraToolExtractor = extractor.NewService(factory.fileWalkerService)
-	factory.oraToolService = patcher.NewService(cfg, factory.gitWalkerService, factory.oraToolExtractor)
+	factory.oraToolSplitter = splitter.NewService(cfg, factory.oraToolExtractor)
+	factory.oraToolPatcher = patcher.NewService(cfg, factory.gitWalkerService, factory.oraToolExtractor)
 	return factory, nil
 }

@@ -44,7 +44,11 @@ func (app *App) Run() {
 		logrus.Fatalf("Fail to init gpt service %s", err)
 	}
 
-	if err := app.Factory.oraToolService.CreatePatch(); err != nil {
-		logrus.Fatalf("Patch creation failed with err %s", err)
+	//if err := app.Factory.oraToolPatcher.CreatePatch(); err != nil {
+	//	logrus.Fatalf("Patch creation failed with err %s", err)
+	//}
+
+	if err := app.Factory.oraToolSplitter.SplitTableFiles(); err != nil {
+		logrus.Fatalf("Split operation failed with err %s", err)
 	}
 }

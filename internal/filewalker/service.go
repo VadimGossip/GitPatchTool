@@ -70,6 +70,7 @@ func (s *service) SearchStrInFile(starts, path string) (string, error) {
 }
 
 func (s *service) Walk(path string, fileType int) ([]domain.File, error) {
+	rootPath := path
 	result := make([]domain.File, 0)
 	extMap := make(map[string]struct{})
 	if fileType == domain.OracleFileType {
@@ -83,9 +84,10 @@ func (s *service) Walk(path string, fileType int) ([]domain.File, error) {
 			if !info.IsDir() {
 				if _, ok := extMap[filepath.Ext(info.Name())]; ok {
 					result = append(result, domain.File{
-						Name: info.Name(),
-						Path: path,
-						Type: fileType,
+						Name:      info.Name(),
+						ShortPath: strings.Replace(path, rootPath, "", -1),
+						Path:      path,
+						Type:      fileType,
 					})
 				}
 			}
