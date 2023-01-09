@@ -3,10 +3,10 @@ package splitter
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/filewalker"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/extractor"
+	"github.com/sirupsen/logrus"
 	"os"
 	"regexp"
 	"strings"
@@ -43,7 +43,7 @@ func (s *service) markFileLines(fileLines []string) map[int]string {
 		tmpFileLine := strings.TrimSpace(strings.ToLower(fileLine))
 		tmpFileLine = regexp.MustCompile(`\s+`).ReplaceAllString(tmpFileLine, " ")
 
-		if strings.HasPrefix(tmpFileLine, "alter table") {
+		if strings.HasPrefix(tmpFileLine, "alter") {
 			foundLines = []string{tmpFileLine}
 		} else {
 			foundLines = append(foundLines, tmpFileLine)
@@ -57,17 +57,18 @@ func (s *service) markFileLines(fileLines []string) map[int]string {
 				resultStr = resultStr + " " + strings.TrimSpace(str)
 			}
 		}
+
 		parts := strings.Split(resultStr, " ")
-		if len(parts) > 11 &&
+		if len(parts) == 12 &&
 			parts[0] == "alter" &&
 			parts[1] == "table" &&
 			parts[3] == "add" &&
 			parts[4] == "constraint" &&
 			parts[6] == "foreign" &&
 			parts[7] == "key" &&
-			parts[8] == "references" && strings.HasSuffix(parts[len(parts)-1], stopElement) {
+			parts[9] == "references" && strings.HasSuffix(parts[len(parts)-1], stopElement) {
 			for i := idx - (len(foundLines) - 1); i <= idx; i++ {
-				markedMap[i] = parts[3]
+				markedMap[i] = parts[5]
 			}
 			foundLines = nil
 		}
@@ -118,7 +119,7 @@ func (s *service) splitTableFile(oraFile domain.OracleObject) error {
 	filesToCreate := make(map[string][]string)
 	for idx, fileLine := range fileLines {
 		if val, ok := markedLines[idx]; ok {
-			if _, ftc := filesToCreate[val+".sql"]; !ftc {
+			if _, ok := filesToCreate[val+".sql"]; !ok {
 				schema, err := s.fileWalker.SearchStrInFile("schema", oraFile.File.Path)
 				if err == nil {
 					filesToCreate[val+".sql"] = append(filesToCreate[val], schema)
@@ -135,17 +136,16 @@ func (s *service) splitTableFile(oraFile domain.OracleObject) error {
 
 	if len(filesToCreate) > 1 {
 		if err := s.createDir(path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk"); err != nil {
-			fmt.Println(err)
-		}
-	}
-
-	for key, val := range filesToCreate {
-		if key != oraFile.File.Name {
-			path = path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk" + string(os.PathSeparator) + oraFile.File.Name + "." + key
-		}
-		if err := s.createFile(path, val); err != nil {
-			fmt.Println(err)
 			return err
+		}
+		for key, val := range filesToCreate {
+			if key != oraFile.File.Name {
+				path = path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk" + string(os.PathSeparator) + oraFile.ObjectName + "." + key
+
+			}
+			if err := s.createFile(path, val); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -160,10 +160,12 @@ func (s *service) SplitTableFiles() error {
 
 	filteredObj := make([]domain.OracleObject, 0)
 	for _, val := range oraObjects {
-		if val.ObjectType == domain.OracleTableType {
+		if val.ObjectType == domain.OracleTableType && val.EpicModuleName == "stlm" && val.ModuleName == "Settlements" {
 			filteredObj = append(filteredObj, val)
 		}
 	}
+
+	logrus.Info(len(filteredObj))
 
 	if err := s.splitTableFile(filteredObj[1]); err != nil {
 		return err

@@ -23,7 +23,7 @@ func NewService(fileWalker filewalker.Service) *service {
 	return &service{fileWalker: fileWalker}
 }
 
-func (s *service) getObjectTypeFromDir(objectTypeDir string) (int, error) {
+func (s *service) getObjectTypeFromDir(objectTypeDir, objectName string) (int, error) {
 	matchMap := map[string]int{
 		"tablespaces": domain.OracleTablespaceType,
 		"directories": domain.OracleDirectoryType,
@@ -46,6 +46,10 @@ func (s *service) getObjectTypeFromDir(objectTypeDir string) (int, error) {
 		"vtbs_clogs":  domain.OracleVClogType,
 	}
 	if val, ok := matchMap[objectTypeDir]; ok {
+		if len(strings.Split(objectName, ".")) > 1 && val == domain.OracleTableType {
+			return domain.OracleTriggerType, nil
+
+		}
 		return val, nil
 	}
 
@@ -124,7 +128,7 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 		//	continue
 		//}
 
-		parts := strings.Split(file.ShortPath, string(os.PathSeparator))
+		parts := strings.Split(file.Path, string(os.PathSeparator))
 		if len(parts) < 4 {
 			s.writeError(&obj, domain.UnknownObjectType)
 			result = append(result, obj)
@@ -133,7 +137,7 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 		obj.EpicModuleName = parts[len(parts)-4]
 		obj.ModuleName = parts[len(parts)-3]
 		obj.ObjectName = file.Name[:len(file.Name)-len(filepath.Ext(file.Name))]
-		obj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2])
+		obj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2], obj.ObjectName)
 		if err != nil {
 			obj.Errors = append(obj.Errors, err.Error())
 		}
