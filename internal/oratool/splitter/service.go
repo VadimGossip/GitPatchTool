@@ -36,6 +36,7 @@ type file struct {
 func (s *service) markFileLines(fileLines []string) map[int]string {
 	foundLines := make([]string, 0)
 	markedMap := make(map[int]string)
+	sameName := make(map[string]struct{})
 
 	for idx, fileLine := range fileLines {
 		tmpFileLine := strings.TrimSpace(strings.ToLower(fileLine))
@@ -76,12 +77,14 @@ func (s *service) markFileLines(fileLines []string) map[int]string {
 			for i := idx - (len(foundLines) - 1); i <= idx; i++ {
 				markedMap[i] = name
 			}
-			//for _, val := range foundLines {
-			//	fmt.Printf("foundLines %s\n", val)
-			//}
 			foundLines = nil
 			if len(parts) > 16 {
 				logrus.Infof("Split manual %s", name)
+			}
+			if _, ok := sameName[name]; !ok {
+				sameName[name] = struct{}{}
+			} else {
+				logrus.Infof("Same name found name %s", name)
 			}
 		}
 	}
@@ -109,7 +112,6 @@ func (s *service) createFile(filePath string, fileLines []string) error {
 		if err != nil {
 			return err
 		}
-		//fmt.Printf("filePath %s fileline %s\n", filePath, fileLine)
 	}
 	return nil
 }
@@ -155,6 +157,7 @@ func (s *service) splitTableFile(oraFile domain.OracleObject) error {
 			if key != oraFile.File.Name {
 				path = oraFile.File.Path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk" + string(os.PathSeparator) + oraFile.ObjectName + "." + key
 			}
+
 			if err := s.createFile(path, val); err != nil {
 				return err
 			}
@@ -176,8 +179,6 @@ func (s *service) SplitTableFiles() error {
 			filteredObj = append(filteredObj, val)
 		}
 	}
-
-	logrus.Infof("filteredObj %+v", filteredObj)
 
 	for _, item := range filteredObj {
 		if err := s.splitTableFile(item); err != nil {
