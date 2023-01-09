@@ -34,8 +34,6 @@ type file struct {
 }
 
 func (s *service) markFileLines(fileLines []string) map[int]string {
-	stopElement := ";"
-
 	foundLines := make([]string, 0)
 	markedMap := make(map[int]string)
 
@@ -59,18 +57,32 @@ func (s *service) markFileLines(fileLines []string) map[int]string {
 		}
 
 		parts := strings.Split(resultStr, " ")
-		if len(parts) == 12 &&
+		if len(parts) >= 12 &&
 			parts[0] == "alter" &&
 			parts[1] == "table" &&
 			parts[3] == "add" &&
-			parts[4] == "constraint" &&
-			parts[6] == "foreign" &&
-			parts[7] == "key" &&
-			parts[9] == "references" && strings.HasSuffix(parts[len(parts)-1], stopElement) {
-			for i := idx - (len(foundLines) - 1); i <= idx; i++ {
-				markedMap[i] = parts[5]
+			(parts[4] == "constraint" || parts[5] == "constraint") &&
+			(parts[6] == "foreign" || parts[7] == "foreign") &&
+			(parts[7] == "key" || parts[8] == "key") &&
+			(parts[9] == "references" || parts[10] == "references") &&
+			(strings.HasSuffix(parts[len(parts)-1], ";") || strings.HasSuffix(parts[len(parts)-1], "/")) {
+			var name string
+			for k := range parts {
+				if parts[k] == "constraint" {
+					name = strings.Replace(parts[k+1], `"`, "", -1)
+					break
+				}
 			}
+			for i := idx - (len(foundLines) - 1); i <= idx; i++ {
+				markedMap[i] = name
+			}
+			//for _, val := range foundLines {
+			//	fmt.Printf("foundLines %s\n", val)
+			//}
 			foundLines = nil
+			if len(parts) > 16 {
+				logrus.Infof("Split manual %s", name)
+			}
 		}
 	}
 	return markedMap
@@ -97,6 +109,7 @@ func (s *service) createFile(filePath string, fileLines []string) error {
 		if err != nil {
 			return err
 		}
+		//fmt.Printf("filePath %s fileline %s\n", filePath, fileLine)
 	}
 	return nil
 }
@@ -125,23 +138,22 @@ func (s *service) splitTableFile(oraFile domain.OracleObject) error {
 					filesToCreate[val+".sql"] = append(filesToCreate[val], schema)
 				}
 			}
-			filesToCreate[val+".sql"] = append(filesToCreate[val+".sql"], fileLine)
+			filesToCreate[val+".sql"] = append(filesToCreate[val+".sql"], strings.ToLower(fileLine))
 
 		} else {
 			filesToCreate[oraFile.File.Name] = append(filesToCreate[oraFile.File.Name], fileLine)
 
 		}
 	}
-	path := oraFile.File.Path
 
 	if len(filesToCreate) > 1 {
-		if err := s.createDir(path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk"); err != nil {
+		if err := s.createDir(oraFile.File.Path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk"); err != nil {
 			return err
 		}
 		for key, val := range filesToCreate {
+			path := oraFile.File.Path
 			if key != oraFile.File.Name {
-				path = path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk" + string(os.PathSeparator) + oraFile.ObjectName + "." + key
-
+				path = oraFile.File.Path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk" + string(os.PathSeparator) + oraFile.ObjectName + "." + key
 			}
 			if err := s.createFile(path, val); err != nil {
 				return err
@@ -160,15 +172,18 @@ func (s *service) SplitTableFiles() error {
 
 	filteredObj := make([]domain.OracleObject, 0)
 	for _, val := range oraObjects {
-		if val.ObjectType == domain.OracleTableType && val.EpicModuleName == "stlm" && val.ModuleName == "Settlements" {
+		if val.ObjectType == domain.OracleTableType && val.ObjectName == "agreements" {
 			filteredObj = append(filteredObj, val)
 		}
 	}
 
-	logrus.Info(len(filteredObj))
+	logrus.Infof("filteredObj %+v", filteredObj)
 
-	if err := s.splitTableFile(filteredObj[1]); err != nil {
-		return err
+	for _, item := range filteredObj {
+		if err := s.splitTableFile(item); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }

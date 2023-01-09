@@ -136,7 +136,7 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 		}
 		obj.EpicModuleName = parts[len(parts)-4]
 		obj.ModuleName = parts[len(parts)-3]
-		obj.ObjectName = file.Name[:len(file.Name)-len(filepath.Ext(file.Name))]
+		obj.ObjectName = strings.ToLower(file.Name[:len(file.Name)-len(filepath.Ext(file.Name))])
 		obj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2], obj.ObjectName)
 		if err != nil {
 			obj.Errors = append(obj.Errors, err.Error())
