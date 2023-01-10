@@ -3,6 +3,7 @@ package splitter
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/filewalker"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/extractor"
@@ -57,8 +58,10 @@ func (s *service) markFileLines(fileLines []string) map[int]string {
 			}
 		}
 
+		//fmt.Printf("index %d tmpFileLine %s\n", idx, tmpFileLine)
+
 		parts := strings.Split(resultStr, " ")
-		if len(parts) >= 12 &&
+		if len(parts) >= 11 &&
 			parts[0] == "alter" &&
 			parts[1] == "table" &&
 			parts[3] == "add" &&
@@ -67,6 +70,9 @@ func (s *service) markFileLines(fileLines []string) map[int]string {
 			(parts[7] == "key" || parts[8] == "key") &&
 			(parts[9] == "references" || parts[10] == "references") &&
 			(strings.HasSuffix(parts[len(parts)-1], ";") || strings.HasSuffix(parts[len(parts)-1], "/")) {
+
+			//fmt.Println(resultStr)
+
 			var name string
 			for k := range parts {
 				if parts[k] == "constraint" {
@@ -88,6 +94,7 @@ func (s *service) markFileLines(fileLines []string) map[int]string {
 			}
 		}
 	}
+	fmt.Println(markedMap)
 	return markedMap
 }
 
@@ -158,6 +165,8 @@ func (s *service) splitTableFile(oraFile domain.OracleObject) error {
 				path = oraFile.File.Path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk" + string(os.PathSeparator) + oraFile.ObjectName + "." + key
 			}
 
+			//fmt.Printf("key %s %d\n", path, len(val))
+
 			if err := s.createFile(path, val); err != nil {
 				return err
 			}
@@ -175,7 +184,7 @@ func (s *service) SplitTableFiles() error {
 
 	filteredObj := make([]domain.OracleObject, 0)
 	for _, val := range oraObjects {
-		if val.ObjectType == domain.OracleTableType && val.ObjectName == "agreements" {
+		if val.ObjectType == domain.OracleTableType && val.ObjectName == "stlm_igt_charges" {
 			filteredObj = append(filteredObj, val)
 		}
 	}
