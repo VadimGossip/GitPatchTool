@@ -102,7 +102,6 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 						Type:             domain.OracleFileType,
 						GitAction:        domain.RenameAction,
 					}
-					file.GitAction = domain.RenameAction
 				} else {
 					file = domain.File{
 						Name:      toFileName,

@@ -9,7 +9,6 @@ import (
 
 type Service interface {
 	CreatePatch() error
-	FixObjectFile() error
 }
 
 type service struct {
@@ -39,9 +38,5 @@ func (s *service) CreatePatch() error {
 		logrus.Infof("file %+v", val)
 	}
 
-	return nil
-}
-
-func (s *service) FixObjectFile() error {
 	return nil
 }

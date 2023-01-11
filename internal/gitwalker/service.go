@@ -22,27 +22,16 @@ func (s *service) leaveLastState(files []domain.File) []domain.File {
 	fkMap := make(map[string]int)
 	resultMap := make(map[domain.File]struct{})
 	for _, val := range files {
-		key := val
 		if fkVal, ok := fkMap[val.Name]; ok {
-			key.GitAction = fkVal
-			delete(resultMap, key)
-			if !(fkVal == domain.AddAction && val.GitAction == domain.ModifyAction) {
-				fkMap[val.Name] = val.GitAction
-				key.GitAction = val.GitAction
+			delete(resultMap, val)
+			if (fkVal == domain.AddAction && val.GitAction == domain.ModifyAction) || fkVal == domain.RenameAction {
+				val.GitAction = fkVal
 			}
-			resultMap[key] = struct{}{}
+			resultMap[val] = struct{}{}
 		} else {
 			fkMap[val.Name] = val.GitAction
-			if val.GitAction == domain.RenameAction {
-				fkMap[val.InitialName] = domain.DeleteAction
-				key.Name = val.InitialName
-				key.ShortPath = val.ShortPath
-				key.Path = val.Path
-				key.GitAction = domain.DeleteAction
-			}
-			resultMap[key] = struct{}{}
+			resultMap[val] = struct{}{}
 		}
-
 	}
 
 	result := make([]domain.File, 0, len(fkMap))
