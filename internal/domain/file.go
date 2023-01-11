@@ -5,10 +5,20 @@ const (
 )
 
 const (
-	AddAction int = iota
-	DeleteAction
-	ModifyAction
-	RenameAction
+	AddAction    int = 1
+	DeleteAction int = 2
+	ModifyAction int = 3
+	RenameAction int = 4
+)
+
+const (
+	Ordinary int = 1
+	ErrorLog int = 2
+	Warning  int = 3
+)
+
+const (
+	ErrorLogName string = "error.log"
 )
 
 type File struct {
@@ -20,4 +30,10 @@ type File struct {
 	InitialPath      string
 	Type             int
 	GitAction        int
+}
+
+type InstallFile struct {
+	Path      string
+	FileLines []string
+	Type      int
 }
