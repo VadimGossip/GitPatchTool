@@ -6,7 +6,7 @@ import (
 	"bufio"
 	"errors"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
-	"github.com/VadimGossip/gitPatchTool/internal/filewalker"
+	"github.com/VadimGossip/gitPatchTool/internal/file"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/extractor"
 	"github.com/sirupsen/logrus"
 	"os"
@@ -20,19 +20,14 @@ type Service interface {
 
 type service struct {
 	cfg        *domain.Config
-	fileWalker filewalker.Service
+	fileWalker file.Service
 	extractor  extractor.Service
 }
 
 var _ Service = (*service)(nil)
 
-func NewService(cfg *domain.Config, fileWalker filewalker.Service, extractor extractor.Service) *service {
+func NewService(cfg *domain.Config, fileWalker file.Service, extractor extractor.Service) *service {
 	return &service{cfg: cfg, fileWalker: fileWalker, extractor: extractor}
-}
-
-type file struct {
-	name string
-	text []string
 }
 
 func (s *service) markFileLines(fileLines []string) map[int]string {

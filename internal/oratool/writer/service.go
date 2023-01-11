@@ -1,12 +1,11 @@
 package writer
 
 import (
-	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 )
 
 type Service interface {
-	CreateInstallLines(oracleObjects []domain.OracleObject) []domain.InstallFile
+	CreateInstallLines(installDir string, oracleObjects []domain.OracleObject) []domain.InstallFile
 }
 
 type service struct {
@@ -18,7 +17,7 @@ func NewService() *service {
 	return &service{}
 }
 
-func (s *service) formErrorLines(oracleObjects []domain.OracleObject) domain.InstallFile {
+func (s *service) formErrorLines(installDir string, oracleObjects []domain.OracleObject) domain.InstallFile {
 	objErrors := make(map[string][]domain.OracleObject)
 	errorLines := make([]string, 0)
 
@@ -34,17 +33,16 @@ func (s *service) formErrorLines(oracleObjects []domain.OracleObject) domain.Ins
 			}
 			errorLines = append(errorLines, val.File.Path)
 		}
-		fmt.Println()
 	}
 
 	return domain.InstallFile{
-		Path:      "",
+		Path:      installDir + domain.ErrorLogFileName,
 		FileLines: errorLines,
 		Type:      domain.ErrorLog,
 	}
 }
 
-func (s *service) CreateInstallLines(oracleObjects []domain.OracleObject) []domain.InstallFile {
+func (s *service) CreateInstallLines(installDir string, oracleObjects []domain.OracleObject) []domain.InstallFile {
 	resultFiles := make([]domain.InstallFile, 0)
 	objWErrors := make([]domain.OracleObject, 0)
 
@@ -55,7 +53,7 @@ func (s *service) CreateInstallLines(oracleObjects []domain.OracleObject) []doma
 	}
 
 	if len(objWErrors) > 1 {
-		resultFiles = append(resultFiles, s.formErrorLines(objWErrors))
+		resultFiles = append(resultFiles, s.formErrorLines(installDir, objWErrors))
 	}
 
 	return resultFiles

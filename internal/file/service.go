@@ -1,4 +1,4 @@
-package filewalker
+package file
 
 import (
 	"bufio"
@@ -13,7 +13,9 @@ type Service interface {
 	SearchStrInFile(starts, path string) (string, error)
 	LostFiles(allList, searchList []domain.File) []domain.File
 	Walk(path string, fileType int) ([]domain.File, error)
-	CreateFile(name string, lines []string) error
+	CreateFile(path string, lines []string) error
+	DeleteFile(path string) error
+	ReadFile(path string) error
 }
 
 type service struct {
@@ -96,8 +98,8 @@ func (s *service) Walk(path string, fileType int) ([]domain.File, error) {
 	return result, nil
 }
 
-func (s *service) CreateFile(name string, lines []string) error {
-	f, err := os.Create(name)
+func (s *service) CreateFile(path string, lines []string) error {
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
@@ -105,11 +107,25 @@ func (s *service) CreateFile(name string, lines []string) error {
 
 	for _, line := range lines {
 		_, err = f.WriteString(line + "\n")
-
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
+func (s *service) DeleteFile(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return os.Remove(path)
+	}
+	return nil
+}
+
+func (s *service) ReadFile(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 	return nil
 }

@@ -18,7 +18,8 @@ const (
 )
 
 const (
-	ErrorLogName string = "error.log"
+	ErrorLogFileName   string = "error_log.txt"
+	WarningLogFileName string = "warning_log.txt"
 )
 
 type File struct {

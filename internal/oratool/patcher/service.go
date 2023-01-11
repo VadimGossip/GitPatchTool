@@ -1,8 +1,8 @@
 package patcher
 
 import (
-	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
+	"github.com/VadimGossip/gitPatchTool/internal/file"
 	"github.com/VadimGossip/gitPatchTool/internal/gitwalker"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/extractor"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/writer"
@@ -14,6 +14,7 @@ type Service interface {
 
 type service struct {
 	cfg       *domain.Config
+	file      file.Service
 	gitWalker gitwalker.Service
 	extractor extractor.Service
 	writer    writer.Service
@@ -21,13 +22,18 @@ type service struct {
 
 var _ Service = (*service)(nil)
 
-func NewService(cfg *domain.Config, gitWalker gitwalker.Service, extractor extractor.Service, writer writer.Service) *service {
-	return &service{cfg: cfg, gitWalker: gitWalker, extractor: extractor, writer: writer}
+func NewService(cfg *domain.Config, file file.Service, gitWalker gitwalker.Service, extractor extractor.Service, writer writer.Service) *service {
+	return &service{cfg: cfg, file: file, gitWalker: gitWalker, extractor: extractor, writer: writer}
 }
 
-/*есть ощущение, что про файлы патчер не должен знать ничего, он просто получает список оракловых объектов
-и передает его создателю скриптов
-*/
+func (s *service) removeSessionFiles() error {
+	for _, fName := range []string{domain.ErrorLogFileName, domain.WarningLogFileName} {
+		if err := s.file.DeleteFile(s.cfg.Path.InstallDir + fName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func (s *service) CreatePatch() error {
 	gitFiles, err := s.gitWalker.GetFilesChanged(s.cfg.CommitId)
@@ -36,11 +42,15 @@ func (s *service) CreatePatch() error {
 	}
 	oracleFiles := s.extractor.ExtractOracleObjects(gitFiles)
 
-	installFiles := s.writer.CreateInstallLines(oracleFiles)
+	installFiles := s.writer.CreateInstallLines(s.cfg.Path.InstallDir, oracleFiles)
+
+	if err := s.removeSessionFiles(); err != nil {
+		return err
+	}
 
 	for _, iFile := range installFiles {
-		for _, line := range iFile.FileLines {
-			fmt.Println(line)
+		if err := s.file.CreateFile(iFile.Path, iFile.FileLines); err != nil {
+			return err
 		}
 	}
 
