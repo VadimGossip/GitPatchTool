@@ -49,7 +49,6 @@ func (s *service) getObjectTypeFromDir(objectTypeDir, objectName string) (int, e
 	if val, ok := matchMap[objectTypeDir]; ok {
 		if len(strings.Split(objectName, ".")) > 1 && val == domain.OracleTableType {
 			return domain.OracleTriggerType, nil
-
 		}
 		return val, nil
 	}

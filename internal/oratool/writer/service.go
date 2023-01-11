@@ -1,6 +1,7 @@
 package writer
 
 import (
+	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 )
 
@@ -29,10 +30,11 @@ func (s *service) formErrorLines(oracleObjects []domain.OracleObject) domain.Ins
 	for _, errMsg := range []string{domain.UnknownObjectType.Error(), domain.SchemaNotFound.Error(), domain.FileNotExists.Error()} {
 		for idx, val := range objErrors[errMsg] {
 			if idx == 0 {
-				errorLines = append(errorLines, domain.UnknownObjectType.Error())
+				errorLines = append(errorLines, errMsg)
 			}
 			errorLines = append(errorLines, val.File.Path)
 		}
+		fmt.Println()
 	}
 
 	return domain.InstallFile{
