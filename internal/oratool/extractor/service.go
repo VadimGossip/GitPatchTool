@@ -44,6 +44,7 @@ func (s *service) getObjectTypeFromDir(objectTypeDir, objectName string) (int, e
 		"roles":       domain.OracleRoleType,
 		"functions":   domain.OracleFunctionType,
 		"vtbs_clogs":  domain.OracleVClogType,
+		"tables.fk":   domain.OracleTableFKType,
 	}
 	if val, ok := matchMap[objectTypeDir]; ok {
 		if len(strings.Split(objectName, ".")) > 1 && val == domain.OracleTableType {
@@ -62,36 +63,36 @@ func (s *service) writeError(obj *domain.OracleObject, err error) {
 	}
 }
 
-func (s *service) addHeader(headersMap map[serverSchema]struct{}, headerStr string) {
+func (s *service) addServerSchema(headersMap map[domain.ServerSchema]struct{}, headerStr string) {
 	if headerStr == "core" {
-		headersMap[serverSchema{
-			server: "core",
-			schema: "vtbs",
+		headersMap[domain.ServerSchema{
+			Server: "core",
+			Schema: "vtbs",
 		}] = struct{}{}
 	} else if headerStr == "charger" || headerStr == "hpffm" {
-		headersMap[serverSchema{
-			server: "hpffm",
-			schema: "vtbs",
+		headersMap[domain.ServerSchema{
+			Server: "hpffm",
+			Schema: "vtbs",
 		}] = struct{}{}
 	} else if headerStr == "vtbs_bi" {
-		headersMap[serverSchema{
-			server: "hpffm",
-			schema: "vtbs_bi",
+		headersMap[domain.ServerSchema{
+			Server: "hpffm",
+			Schema: "vtbs_bi",
 		}] = struct{}{}
 	} else if headerStr == "vtbs_x_alaris" || headerStr == "xalaris" {
-		headersMap[serverSchema{
-			server: "hpffm",
-			schema: "vtbs_x_alaris",
+		headersMap[domain.ServerSchema{
+			Server: "hpffm",
+			Schema: "vtbs_x_alaris",
 		}] = struct{}{}
 	} else if headerStr == "adesk" || headerStr == "vtbs_adesk" || headerStr == "reporter" {
-		headersMap[serverSchema{
-			server: "hpffm",
-			schema: "vtbs_adesk",
+		headersMap[domain.ServerSchema{
+			Server: "hpffm",
+			Schema: "vtbs_adesk",
 		}] = struct{}{}
 	}
 }
 
-func (s *service) parseSchema(schemaStr string) map[serverSchema]struct{} {
+func (s *service) parseSchema(schemaStr string) map[domain.ServerSchema]struct{} {
 	schemaStr = strings.ToLower(schemaStr)
 	schemaStr = strings.Replace(schemaStr, "schema", "", -1)
 	schemaStr = strings.Replace(schemaStr, ":", "", -1)
@@ -101,9 +102,9 @@ func (s *service) parseSchema(schemaStr string) map[serverSchema]struct{} {
 	schemaStr = strings.Replace(schemaStr, "\\", ",", -1)
 	if len(schemaStr) > 0 {
 		parts := strings.Split(schemaStr, ",")
-		result := make(map[serverSchema]struct{})
+		result := make(map[domain.ServerSchema]struct{})
 		for _, val := range parts {
-			s.addHeader(result, val)
+			s.addServerSchema(result, val)
 		}
 		return result
 	}
@@ -115,37 +116,35 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 	result := make([]domain.OracleObject, 0, len(files))
 	for _, file := range files {
 		obj := domain.OracleObject{File: file}
-		//if !s.fileWalker.CheckFileExists(file.Path) && file.GitAction != domain.DeleteAction {
-		//	s.writeError(&obj, domain.FileNotExists)
-		//	result = append(result, obj)
-		//	continue
-		//}
-
-		//schema, err := s.fileWalker.SearchStrInFile("schema", file.Path)
-		//if err != nil {
-		//	s.writeError(&obj, domain.FileNotExists)
-		//	result = append(result, obj)
-		//	continue
-		//}
+		if !s.fileWalker.CheckFileExists(file.Path) && file.GitAction != domain.DeleteAction {
+			s.writeError(&obj, domain.FileNotExists)
+		}
 
 		parts := strings.Split(file.Path, string(os.PathSeparator))
-		if len(parts) < 4 {
+		if len(parts) >= 4 {
+			obj.EpicModuleName = parts[len(parts)-4]
+			obj.ModuleName = parts[len(parts)-3]
+			obj.ObjectName = strings.ToLower(file.Name[:len(file.Name)-len(filepath.Ext(file.Name))])
+			obj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2], obj.ObjectName)
+			if err != nil {
+				obj.Errors = append(obj.Errors, err.Error())
+			}
+		} else {
 			s.writeError(&obj, domain.UnknownObjectType)
-			result = append(result, obj)
-			continue
 		}
-		obj.EpicModuleName = parts[len(parts)-4]
-		obj.ModuleName = parts[len(parts)-3]
-		obj.ObjectName = strings.ToLower(file.Name[:len(file.Name)-len(filepath.Ext(file.Name))])
-		obj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2], obj.ObjectName)
+
+		serverSchema, err := s.fileWalker.SearchStrInFile("schema", file.Path)
 		if err != nil {
-			obj.Errors = append(obj.Errors, err.Error())
+			s.writeError(&obj, domain.SchemaNotFound)
 		}
-		//for key := range s.parseSchema(schema) {
-		//	obj.Server = key.server
-		//	obj.Schema = key.schema
-		//	result = append(result, obj)
-		//}
+
+		for key := range s.parseSchema(serverSchema) {
+			obj.ServerSchemaList = append(obj.ServerSchemaList, key)
+		}
+
+		if len(obj.ServerSchemaList) == 0 {
+			s.writeError(&obj, domain.SchemaNotFound)
+		}
 		result = append(result, obj)
 	}
 
