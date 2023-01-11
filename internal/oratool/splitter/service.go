@@ -1,9 +1,10 @@
 package splitter
 
+// splitter need to refactor service to be more flexible
+
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/filewalker"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/extractor"
@@ -43,7 +44,7 @@ func (s *service) markFileLines(fileLines []string) map[int]string {
 		tmpFileLine := strings.TrimSpace(strings.ToLower(fileLine))
 		tmpFileLine = regexp.MustCompile(`\s+`).ReplaceAllString(tmpFileLine, " ")
 
-		if strings.HasPrefix(tmpFileLine, "alter") {
+		if strings.HasPrefix(tmpFileLine, "alter") || strings.HasPrefix(tmpFileLine, "create") {
 			foundLines = []string{tmpFileLine}
 		} else {
 			foundLines = append(foundLines, tmpFileLine)
@@ -94,7 +95,6 @@ func (s *service) markFileLines(fileLines []string) map[int]string {
 			}
 		}
 	}
-	fmt.Println(markedMap)
 	return markedMap
 }
 
@@ -184,7 +184,7 @@ func (s *service) SplitTableFiles() error {
 
 	filteredObj := make([]domain.OracleObject, 0)
 	for _, val := range oraObjects {
-		if val.ObjectType == domain.OracleTableType && val.ObjectName == "stlm_igt_charges" {
+		if val.ObjectType == domain.OracleTableType {
 			filteredObj = append(filteredObj, val)
 		}
 	}
