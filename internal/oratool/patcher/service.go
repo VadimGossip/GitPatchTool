@@ -49,7 +49,7 @@ func (s *service) CreatePatch() error {
 	}
 
 	for _, iFile := range installFiles {
-		if err := s.file.CreateFile(iFile.Path, iFile.FileLines); err != nil {
+		if err := s.file.CreateFile(iFile.FileDetails.Path, iFile.FileDetails.FileLines); err != nil {
 			return err
 		}
 	}

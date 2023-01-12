@@ -5,7 +5,7 @@ import (
 )
 
 type Service interface {
-	CreateInstallLines(installDir string, oracleObjects []domain.OracleObject) []domain.InstallFile
+	CreateInstallLines(installDir string, oracleObjects []domain.OracleObject) []domain.OracleFile
 }
 
 type service struct {
@@ -37,10 +37,11 @@ func (s *service) formErrorLines(installDir string, oracleObjects []domain.Oracl
 
 	return domain.OracleFile{
 		OracleDataType: domain.ErrorLog,
-
-		Path:      installDir + domain.ErrorLogFileName,
-		FileLines: errorLines,
-		Type:      domain.ErrorLog,
+		FileDetails: domain.File{
+			Name:      domain.ErrorLogFileName,
+			Path:      installDir + domain.ErrorLogFileName,
+			FileLines: errorLines,
+		},
 	}
 }
 
@@ -95,8 +96,8 @@ func (s *service) formErrorLines(installDir string, oracleObjects []domain.Oracl
 //	//}
 //}
 
-func (s *service) CreateInstallLines(installDir string, oracleObjects []domain.OracleObject) []domain.InstallFile {
-	resultFiles := make([]domain.InstallFile, 0)
+func (s *service) CreateInstallLines(installDir string, oracleObjects []domain.OracleObject) []domain.OracleFile {
+	resultFiles := make([]domain.OracleFile, 0)
 	objWErrors := make([]domain.OracleObject, 0)
 
 	for _, obj := range oracleObjects {
