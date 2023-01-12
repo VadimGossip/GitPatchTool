@@ -19,24 +19,24 @@ func NewService(repository Repository) *service {
 }
 
 func (s *service) leaveLastState(files []domain.File) []domain.File {
-	fkMap := make(map[string]int)
-	resultMap := make(map[domain.File]struct{})
+	resultMap := make(map[string]domain.File)
 	for _, val := range files {
-		if fkVal, ok := fkMap[val.Name]; ok {
-			delete(resultMap, val)
-			if (fkVal == domain.AddAction && val.GitAction == domain.ModifyAction) || fkVal == domain.RenameAction {
-				val.GitAction = fkVal
+		if rv, ok := resultMap[val.Path]; ok {
+			if (rv.GitDetails.Action == domain.AddAction && val.GitDetails.Action == domain.ModifyAction) || rv.GitDetails.Action == domain.RenameAction {
+				if rv.GitDetails.Action == domain.RenameAction {
+					val.GitDetails.InitialName = rv.GitDetails.InitialName
+					val.GitDetails.InitialPath = rv.GitDetails.InitialPath
+				}
+				val.GitDetails.Action = rv.GitDetails.Action
+
 			}
-			resultMap[val] = struct{}{}
-		} else {
-			fkMap[val.Name] = val.GitAction
-			resultMap[val] = struct{}{}
 		}
+		resultMap[val.Path] = val
 	}
 
-	result := make([]domain.File, 0, len(fkMap))
-	for key := range resultMap {
-		result = append(result, key)
+	result := make([]domain.File, 0, len(resultMap))
+	for _, rv := range resultMap {
+		result = append(result, rv)
 	}
 
 	return result

@@ -62,35 +62,6 @@ func (s *service) writeError(obj *domain.OracleObject, err error) {
 	}
 }
 
-func (s *service) addServerSchema(headersMap map[domain.ServerSchema]struct{}, headerStr string) {
-	if headerStr == "core" {
-		headersMap[domain.ServerSchema{
-			Server: "core",
-			Schema: "vtbs",
-		}] = struct{}{}
-	} else if headerStr == "charger" || headerStr == "hpffm" {
-		headersMap[domain.ServerSchema{
-			Server: "hpffm",
-			Schema: "vtbs",
-		}] = struct{}{}
-	} else if headerStr == "vtbs_bi" {
-		headersMap[domain.ServerSchema{
-			Server: "hpffm",
-			Schema: "vtbs_bi",
-		}] = struct{}{}
-	} else if headerStr == "vtbs_x_alaris" || headerStr == "xalaris" {
-		headersMap[domain.ServerSchema{
-			Server: "hpffm",
-			Schema: "vtbs_x_alaris",
-		}] = struct{}{}
-	} else if headerStr == "adesk" || headerStr == "vtbs_adesk" || headerStr == "reporter" {
-		headersMap[domain.ServerSchema{
-			Server: "hpffm",
-			Schema: "vtbs_adesk",
-		}] = struct{}{}
-	}
-}
-
 func (s *service) parseSchema(schemaStr string) map[domain.ServerSchema]struct{} {
 	schemaStr = strings.ToLower(schemaStr)
 	schemaStr = strings.Replace(schemaStr, "schema", "", -1)
@@ -103,7 +74,10 @@ func (s *service) parseSchema(schemaStr string) map[domain.ServerSchema]struct{}
 		parts := strings.Split(schemaStr, ",")
 		result := make(map[domain.ServerSchema]struct{})
 		for _, val := range parts {
-			s.addServerSchema(result, val)
+			serverSchema, err := domain.GetServerSchemaBySchemaStrItem(val)
+			if err == nil {
+				result[serverSchema] = struct{}{}
+			}
 		}
 		return result
 	}
@@ -115,7 +89,7 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 	result := make([]domain.OracleObject, 0, len(files))
 	for _, file := range files {
 		obj := domain.OracleObject{File: file}
-		if !s.fileWalker.CheckFileExists(file.Path) && file.GitAction != domain.DeleteAction {
+		if !s.fileWalker.CheckFileExists(file.Path) && file.GitDetails.Action != domain.DeleteAction {
 			s.writeError(&obj, domain.FileNotExists)
 		}
 
@@ -151,7 +125,7 @@ func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObjec
 }
 
 func (s *service) WalkAndExtractOracleObjects(rootDir string) ([]domain.OracleObject, error) {
-	files, err := s.fileWalker.Walk(rootDir, domain.OracleFileType)
+	files, err := s.fileWalker.Walk(rootDir, []string{".sql"})
 	if err != nil {
 		return nil, err
 	}

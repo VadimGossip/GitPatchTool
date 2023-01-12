@@ -61,12 +61,6 @@ func (r *repository) GetPreviousCommit(hashStr string) (*object.Commit, error) {
 	return nextCommit, nil
 }
 
-func (r *repository) appendFiles(files *[]domain.File, file domain.File) {
-	if strings.Split(file.ShortPath, string(os.PathSeparator))[0] != "install" {
-		*files = append(*files, file)
-	}
-}
-
 func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, files *[]domain.File) error {
 	patch, err := currentCommit.Patch(nextCommit)
 	if err != nil {
@@ -93,43 +87,46 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 				file := domain.File{}
 				if fromFile.Path() != toFile.Path() {
 					file = domain.File{
-						Name:             toFileName,
-						ShortPath:        strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
-						Path:             strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
-						InitialName:      fromFileName,
-						InitialShortPath: strings.Replace(fromFile.Path(), "/", string(os.PathSeparator), -1),
-						InitialPath:      strings.Replace(r.rootDir+fromFile.Path(), "/", string(os.PathSeparator), -1),
-						Type:             domain.OracleFileType,
-						GitAction:        domain.RenameAction,
+						Name: toFileName,
+						Path: strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
+						GitDetails: domain.GitFileDetails{
+							InitialName: fromFileName,
+							InitialPath: strings.Replace(r.rootDir+fromFile.Path(), "/", string(os.PathSeparator), -1),
+							Comment:     currentCommit.Message,
+							Action:      domain.RenameAction,
+						},
 					}
 				} else {
 					file = domain.File{
-						Name:      toFileName,
-						ShortPath: strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
-						Path:      strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
-						Type:      domain.OracleFileType,
-						GitAction: domain.ModifyAction,
+						Name: toFileName,
+						Path: strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
+						GitDetails: domain.GitFileDetails{
+							Comment: currentCommit.Message,
+							Action:  domain.ModifyAction,
+						},
 					}
 				}
-				r.appendFiles(files, file)
+				*files = append(*files, file)
 			} else if fromFile != nil && toFile == nil {
 				file := domain.File{
-					Name:      fromFileName,
-					Path:      strings.Replace(r.rootDir+fromFile.Path(), "/", string(os.PathSeparator), -1),
-					ShortPath: strings.Replace(fromFile.Path(), "/", string(os.PathSeparator), -1),
-					Type:      domain.OracleFileType,
-					GitAction: domain.DeleteAction,
+					Name: fromFileName,
+					Path: strings.Replace(r.rootDir+fromFile.Path(), "/", string(os.PathSeparator), -1),
+					GitDetails: domain.GitFileDetails{
+						Comment: currentCommit.Message,
+						Action:  domain.DeleteAction,
+					},
 				}
-				r.appendFiles(files, file)
+				*files = append(*files, file)
 			} else if toFile != nil && fromFile == nil {
 				file := domain.File{
-					Name:      toFileName,
-					Path:      strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
-					ShortPath: strings.Replace(toFile.Path(), "/", string(os.PathSeparator), -1),
-					Type:      domain.OracleFileType,
-					GitAction: domain.AddAction,
+					Name: toFileName,
+					Path: strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
+					GitDetails: domain.GitFileDetails{
+						Comment: currentCommit.Message,
+						Action:  domain.AddAction,
+					},
 				}
-				r.appendFiles(files, file)
+				*files = append(*files, file)
 			}
 		}
 	}

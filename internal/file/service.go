@@ -12,7 +12,7 @@ type Service interface {
 	CheckFileExists(path string) bool
 	SearchStrInFile(starts, path string) (string, error)
 	LostFiles(allList, searchList []domain.File) []domain.File
-	Walk(path string, fileType int) ([]domain.File, error)
+	Walk(path string, extFilter []string) ([]domain.File, error)
 	CreateFile(path string, lines []string) error
 	DeleteFile(path string) error
 	ReadFile(path string) error
@@ -71,12 +71,13 @@ func (s *service) SearchStrInFile(searchStr, filePath string) (string, error) {
 	return "", nil
 }
 
-func (s *service) Walk(path string, fileType int) ([]domain.File, error) {
+func (s *service) Walk(path string, extFilter []string) ([]domain.File, error) {
 	result := make([]domain.File, 0)
 	extMap := make(map[string]struct{})
-	if fileType == domain.OracleFileType {
-		extMap[".sql"] = struct{}{}
+	for _, ext := range extFilter {
+		extMap[ext] = struct{}{}
 	}
+
 	if err := filepath.Walk(path,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -87,7 +88,6 @@ func (s *service) Walk(path string, fileType int) ([]domain.File, error) {
 					result = append(result, domain.File{
 						Name: info.Name(),
 						Path: path,
-						Type: fileType,
 					})
 				}
 			}
