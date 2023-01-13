@@ -12,9 +12,6 @@ const (
 	Install
 	ErrorLog
 	WarningLog
-	ScriptBefore
-	ScriptAfter
-	Migration
 )
 
 const (
@@ -38,6 +35,7 @@ type GitFileDetails struct {
 	InitialPath string
 	Comment     string
 	Action      int
+	New         bool
 }
 
 type File struct {

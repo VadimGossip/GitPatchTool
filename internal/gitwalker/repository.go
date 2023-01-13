@@ -124,6 +124,7 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 					GitDetails: domain.GitFileDetails{
 						Comment: currentCommit.Message,
 						Action:  domain.AddAction,
+						New:     true,
 					},
 				}
 				*files = append(*files, file)

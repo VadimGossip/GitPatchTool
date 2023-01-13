@@ -18,17 +18,14 @@ func NewService(repository Repository) *service {
 	return &service{repo: repository}
 }
 
+//добавить параметр New
 func (s *service) leaveLastState(files []domain.File) []domain.File {
 	resultMap := make(map[string]domain.File)
 	for _, val := range files {
 		if rv, ok := resultMap[val.Path]; ok {
-			if (rv.GitDetails.Action == domain.AddAction && val.GitDetails.Action == domain.ModifyAction) || rv.GitDetails.Action == domain.RenameAction {
-				if rv.GitDetails.Action == domain.RenameAction {
-					val.GitDetails.InitialName = rv.GitDetails.InitialName
-					val.GitDetails.InitialPath = rv.GitDetails.InitialPath
-				}
-				val.GitDetails.Action = rv.GitDetails.Action
-
+			if rv.GitDetails.Action == domain.RenameAction {
+				val.GitDetails.InitialName = rv.GitDetails.InitialName
+				val.GitDetails.InitialPath = rv.GitDetails.InitialPath
 			}
 		}
 		resultMap[val.Path] = val

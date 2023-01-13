@@ -25,26 +25,29 @@ func NewService(fileWalker file.Service) *service {
 
 func (s *service) getObjectTypeFromDir(objectTypeDir, objectName string) (int, error) {
 	matchMap := map[string]int{
-		"tablespaces": domain.OracleTablespaceType,
-		"directories": domain.OracleDirectoryType,
-		"dblinks":     domain.OracleDbLinkType,
-		"users":       domain.OracleUserType,
-		"synonyms":    domain.OracleSynonymType,
-		"contexts":    domain.OracleContextType,
-		"sequences":   domain.OracleSequencesType,
-		"types":       domain.OracleTypeType,
-		"tables":      domain.OracleTableType,
-		"mlogs":       domain.OracleMLogType,
-		"mviews":      domain.OracleMViewType,
-		"packages":    domain.OraclePackageType,
-		"views":       domain.OracleViewType,
-		"triggers":    domain.OracleTriggerType,
-		"vtbs_tasks":  domain.OracleVTaskType,
-		"rows":        domain.OracleRowType,
-		"roles":       domain.OracleRoleType,
-		"functions":   domain.OracleFunctionType,
-		"vtbs_clogs":  domain.OracleVClogType,
-		"tables.fk":   domain.OracleTableFKType,
+		"tablespaces":       domain.OracleTablespaceType,
+		"directories":       domain.OracleDirectoryType,
+		"dblinks":           domain.OracleDbLinkType,
+		"users":             domain.OracleUserType,
+		"synonyms":          domain.OracleSynonymType,
+		"contexts":          domain.OracleContextType,
+		"sequences":         domain.OracleSequencesType,
+		"types":             domain.OracleTypeType,
+		"tables":            domain.OracleTableType,
+		"mlogs":             domain.OracleMLogType,
+		"mviews":            domain.OracleMViewType,
+		"packages":          domain.OraclePackageType,
+		"views":             domain.OracleViewType,
+		"triggers":          domain.OracleTriggerType,
+		"vtbs_tasks":        domain.OracleVTaskType,
+		"rows":              domain.OracleRowType,
+		"roles":             domain.OracleRoleType,
+		"functions":         domain.OracleFunctionType,
+		"vtbs_clogs":        domain.OracleVClogType,
+		"tables.fk":         domain.OracleTableFKType,
+		"scripts_before:":   domain.OracleScriptsBeforeType,
+		"scripts_after:":    domain.OracleScriptsAfterType,
+		"scripts_migration": domain.OracleScriptsMigrationType,
 	}
 	if val, ok := matchMap[objectTypeDir]; ok {
 		if len(strings.Split(objectName, ".")) > 1 && val == domain.OracleTableType {
@@ -105,6 +108,7 @@ func (s *service) resolveAdditionalPathInfo(oracleObj *domain.OracleObject) {
 		oracleObj.EpicModuleName = parts[len(parts)-4]
 		oracleObj.ModuleName = parts[len(parts)-3]
 		oracleObj.ObjectName = strings.ToLower(oracleObj.File.FileDetails.Name[:len(oracleObj.File.FileDetails.Name)-len(filepath.Ext(oracleObj.File.FileDetails.Name))])
+
 		oracleObj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2], oracleObj.ObjectName)
 		if err != nil {
 			oracleObj.Errors = append(oracleObj.Errors, err.Error())
@@ -131,10 +135,10 @@ func (s *service) addSchema(oracleObj *domain.OracleObject) {
 
 func (s *service) CreateOracleObjects(files []domain.File) []domain.OracleObject {
 	result := make([]domain.OracleObject, 0, len(files))
-	for _, file := range files {
+	for _, f := range files {
 		oracleFile := domain.OracleFile{
 			OracleDataType: domain.Data,
-			FileDetails:    file,
+			FileDetails:    f,
 		}
 		obj := domain.OracleObject{File: oracleFile}
 		s.resolveAdditionalPathInfo(&obj)
