@@ -40,9 +40,9 @@ func (s *service) CreatePatch() error {
 	if err != nil {
 		return err
 	}
-	oracleFiles := s.extractor.ExtractOracleObjects(gitFiles)
+	oracleObj := s.extractor.CreateOracleObjects(gitFiles)
 
-	installFiles := s.writer.CreateInstallLines(s.cfg.Path.InstallDir, oracleFiles)
+	installFiles := s.writer.CreateInstallLines(s.cfg.Path.InstallDir, oracleObj)
 
 	if err := s.removeSessionFiles(); err != nil {
 		return err

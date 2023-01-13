@@ -119,7 +119,7 @@ func (s *service) createFile(filePath string, fileLines []string) error {
 }
 
 func (s *service) splitTableFile(oraFile domain.OracleObject) error {
-	f, err := os.Open(oraFile.File.Path)
+	f, err := os.Open(oraFile.File.FileDetails.Path)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (s *service) splitTableFile(oraFile domain.OracleObject) error {
 	for idx, fileLine := range fileLines {
 		if val, ok := markedLines[idx]; ok {
 			if _, ok := filesToCreate[val+".sql"]; !ok {
-				schema, err := s.fileWalker.SearchStrInFile("schema", oraFile.File.Path)
+				schema, err := s.fileWalker.SearchStrInFile("schema", oraFile.File.FileDetails.Path)
 				if err == nil {
 					filesToCreate[val+".sql"] = append(filesToCreate[val], schema)
 				}
@@ -145,19 +145,19 @@ func (s *service) splitTableFile(oraFile domain.OracleObject) error {
 			filesToCreate[val+".sql"] = append(filesToCreate[val+".sql"], strings.ToLower(fileLine))
 
 		} else {
-			filesToCreate[oraFile.File.Name] = append(filesToCreate[oraFile.File.Name], fileLine)
+			filesToCreate[oraFile.File.FileDetails.Name] = append(filesToCreate[oraFile.File.FileDetails.Name], fileLine)
 
 		}
 	}
 
 	if len(filesToCreate) > 1 {
-		if err := s.createDir(oraFile.File.Path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk"); err != nil {
+		if err := s.createDir(oraFile.File.FileDetails.Path[:len(oraFile.File.FileDetails.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.FileDetails.Name)] + "tables.fk"); err != nil {
 			return err
 		}
 		for key, val := range filesToCreate {
-			path := oraFile.File.Path
-			if key != oraFile.File.Name {
-				path = oraFile.File.Path[:len(oraFile.File.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.Name)] + "tables.fk" + string(os.PathSeparator) + oraFile.ObjectName + "." + key
+			path := oraFile.File.FileDetails.Path
+			if key != oraFile.File.FileDetails.Name {
+				path = oraFile.File.FileDetails.Path[:len(oraFile.File.FileDetails.Path)-len("tables"+string(os.PathSeparator)+oraFile.File.FileDetails.Name)] + "tables.fk" + string(os.PathSeparator) + oraFile.ObjectName + "." + key
 			}
 
 			//fmt.Printf("key %s %d\n", path, len(val))
@@ -172,16 +172,14 @@ func (s *service) splitTableFile(oraFile domain.OracleObject) error {
 }
 
 func (s *service) SplitTableFiles() error {
-	oraObjects, err := s.extractor.WalkAndExtractOracleObjects(s.cfg.Path.RootDir)
+	oraObjects, err := s.extractor.WalkAndCreateOracleObjects(s.cfg.Path.RootDir)
 	if err != nil {
 		return err
 	}
 
 	filteredObj := make([]domain.OracleObject, 0)
 	for _, val := range oraObjects {
-		if val.ObjectType == domain.OracleTableType {
-			filteredObj = append(filteredObj, val)
-		}
+		filteredObj = append(filteredObj, val)
 	}
 
 	for _, item := range filteredObj {

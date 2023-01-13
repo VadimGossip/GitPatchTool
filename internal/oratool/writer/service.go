@@ -31,7 +31,7 @@ func (s *service) formErrorLines(installDir string, oracleObjects []domain.Oracl
 			if idx == 0 {
 				errorLines = append(errorLines, errMsg)
 			}
-			errorLines = append(errorLines, val.File.Path)
+			errorLines = append(errorLines, val.File.FileDetails.Path)
 		}
 	}
 
@@ -52,17 +52,7 @@ func (s *service) formErrorLines(installDir string, oracleObjects []domain.Oracl
 
 //func (s *service) sortOracleObject(oracleObjects []domain.OracleObject) {
 //	sort.SliceStable(oracleObjects, func(i, j int) bool {
-//		if (oracleObjects[i].ObjectType == domain.OracleScriptsBeforeType &&
-//			oracleObjects[j].ObjectType != domain.OracleScriptsBeforeType) ||
-//			(oracleObjects[i].ObjectType != domain.OracleScriptsBeforeType && oracleObjects[i].ObjectType != domain.OracleScriptsAfterType &&
-//				oracleObjects[j].ObjectType == domain.OracleScriptsAfterType){
-//			return true
-//		}
-//
-//
-//		if oracleObjects[i].ObjectType == oracleObjects[j].ObjectType &&
-//
-//
+//		if oracleObjects[i].File.
 //
 //		return suppliers[i].EUM != nil && (suppliers[j].EUM == nil || *suppliers[i].EUM > *suppliers[j].EUM)
 //	})

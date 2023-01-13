@@ -46,7 +46,7 @@ type OracleObject struct {
 	ObjectName       string
 	ObjectType       int
 	ServerSchemaList []ServerSchema
-	File             File
+	File             OracleFile
 	Errors           []string
 	InstallOrder     int
 }

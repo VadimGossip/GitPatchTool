@@ -9,8 +9,8 @@ import (
 )
 
 type Service interface {
-	ExtractOracleObjects(files []domain.File) []domain.OracleObject
-	WalkAndExtractOracleObjects(rootDir string) ([]domain.OracleObject, error)
+	CreateOracleObjects(files []domain.File) []domain.OracleObject
+	WalkAndCreateOracleObjects(rootDir string) ([]domain.OracleObject, error)
 }
 
 type service struct {
@@ -84,50 +84,71 @@ func (s *service) parseSchema(schemaStr string) map[domain.ServerSchema]struct{}
 	return nil
 }
 
-func (s *service) ExtractOracleObjects(files []domain.File) []domain.OracleObject {
+func (s *service) resolveAdditionalPathInfo(oracleObj *domain.OracleObject) {
 	var err error
+	if !s.fileWalker.CheckFileExists(oracleObj.File.FileDetails.Path) && oracleObj.File.FileDetails.GitDetails.Action != domain.DeleteAction {
+		s.writeError(oracleObj, domain.FileNotExists)
+	}
+
+	parts := strings.Split(oracleObj.File.FileDetails.Path, string(os.PathSeparator))
+	if len(parts) >= 2 && parts[len(parts)-2] == "install" {
+		if parts[len(parts)-1] == domain.ErrorLogFileName {
+			oracleObj.File.OracleDataType = domain.ErrorLog
+		} else if parts[len(parts)-1] == domain.WarningLogFileName {
+			oracleObj.File.OracleDataType = domain.WarningLog
+		} else {
+			oracleObj.File.OracleDataType = domain.Install
+		}
+	}
+
+	if len(parts) >= 4 {
+		oracleObj.EpicModuleName = parts[len(parts)-4]
+		oracleObj.ModuleName = parts[len(parts)-3]
+		oracleObj.ObjectName = strings.ToLower(oracleObj.File.FileDetails.Name[:len(oracleObj.File.FileDetails.Name)-len(filepath.Ext(oracleObj.File.FileDetails.Name))])
+		oracleObj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2], oracleObj.ObjectName)
+		if err != nil {
+			oracleObj.Errors = append(oracleObj.Errors, err.Error())
+		}
+	} else {
+		s.writeError(oracleObj, domain.UnknownObjectType)
+	}
+}
+
+func (s *service) addSchema(oracleObj *domain.OracleObject) {
+	serverSchema, err := s.fileWalker.SearchStrInFile("schema", oracleObj.File.FileDetails.Path)
+	if err != nil {
+		s.writeError(oracleObj, domain.SchemaNotFound)
+	}
+
+	for key := range s.parseSchema(serverSchema) {
+		oracleObj.ServerSchemaList = append(oracleObj.ServerSchemaList, key)
+	}
+
+	if len(oracleObj.ServerSchemaList) == 0 {
+		s.writeError(oracleObj, domain.SchemaNotFound)
+	}
+}
+
+func (s *service) CreateOracleObjects(files []domain.File) []domain.OracleObject {
 	result := make([]domain.OracleObject, 0, len(files))
 	for _, file := range files {
-		obj := domain.OracleObject{File: file}
-		if !s.fileWalker.CheckFileExists(file.Path) && file.GitDetails.Action != domain.DeleteAction {
-			s.writeError(&obj, domain.FileNotExists)
+		oracleFile := domain.OracleFile{
+			OracleDataType: domain.Data,
+			FileDetails:    file,
 		}
-
-		parts := strings.Split(file.Path, string(os.PathSeparator))
-		if len(parts) >= 4 {
-			obj.EpicModuleName = parts[len(parts)-4]
-			obj.ModuleName = parts[len(parts)-3]
-			obj.ObjectName = strings.ToLower(file.Name[:len(file.Name)-len(filepath.Ext(file.Name))])
-			obj.ObjectType, err = s.getObjectTypeFromDir(parts[len(parts)-2], obj.ObjectName)
-			if err != nil {
-				obj.Errors = append(obj.Errors, err.Error())
-			}
-		} else {
-			s.writeError(&obj, domain.UnknownObjectType)
-		}
-
-		serverSchema, err := s.fileWalker.SearchStrInFile("schema", file.Path)
-		if err != nil {
-			s.writeError(&obj, domain.SchemaNotFound)
-		}
-
-		for key := range s.parseSchema(serverSchema) {
-			obj.ServerSchemaList = append(obj.ServerSchemaList, key)
-		}
-
-		if len(obj.ServerSchemaList) == 0 {
-			s.writeError(&obj, domain.SchemaNotFound)
-		}
+		obj := domain.OracleObject{File: oracleFile}
+		s.resolveAdditionalPathInfo(&obj)
+		s.addSchema(&obj)
 		result = append(result, obj)
 	}
 
 	return result
 }
 
-func (s *service) WalkAndExtractOracleObjects(rootDir string) ([]domain.OracleObject, error) {
+func (s *service) WalkAndCreateOracleObjects(rootDir string) ([]domain.OracleObject, error) {
 	files, err := s.fileWalker.Walk(rootDir, []string{".sql"})
 	if err != nil {
 		return nil, err
 	}
-	return s.ExtractOracleObjects(files), nil
+	return s.CreateOracleObjects(files), nil
 }
