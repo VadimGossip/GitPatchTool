@@ -3,50 +3,25 @@ package writer
 import (
 	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
+	"github.com/VadimGossip/gitPatchTool/internal/file"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
 
 type Service interface {
-	CreateInstallFiles(rootDir, installDir, commitMsg string, oracleObjects []domain.OracleObject) []domain.OracleFile
+	CreateInstallFiles(rootDir, installDir, commitMsg string, oracleObjects []domain.OracleObject) error
 }
 
 type service struct {
+	file file.Service
 }
 
 var _ Service = (*service)(nil)
 
-func NewService() *service {
-	return &service{}
-}
-
-func (s *service) formErrorLines(installDir string, oracleObjects []domain.OracleObject) domain.OracleFile {
-	objErrors := make(map[string][]domain.OracleObject)
-	errorLines := make([]string, 0)
-
-	for _, val := range oracleObjects {
-		for _, errMsg := range val.Errors {
-			objErrors[errMsg] = append(objErrors[errMsg], val)
-		}
-	}
-	for _, errMsg := range []string{domain.UnknownObjectType.Error(), domain.SchemaNotFound.Error(), domain.FileNotExists.Error()} {
-		for idx, val := range objErrors[errMsg] {
-			if idx == 0 {
-				errorLines = append(errorLines, errMsg)
-			}
-			errorLines = append(errorLines, val.File.FileDetails.Path)
-		}
-	}
-
-	return domain.OracleFile{
-		OracleDataType: domain.ErrorLog,
-		FileDetails: domain.File{
-			Name:      domain.ErrorLogFileName,
-			Path:      installDir + domain.ErrorLogFileName,
-			FileLines: errorLines,
-		},
-	}
+func NewService(file file.Service) *service {
+	return &service{file: file}
 }
 
 //func (s *service) getInstallFileName(serverSchema []domain.ServerSchema) string {
@@ -182,9 +157,27 @@ func (s *service) sortOracleObjects(oracleObjects []domain.OracleObject) {
 	})
 }
 
-func (s *service) createFileHeader(filename string) []string {
+func (s *service) createInstallFileHeader(schemaStrItem, filename string) []string {
+	return []string{
+		fmt.Sprintf("-- Schema: %s\n", schemaStrItem),
+		fmt.Sprintf("prompt install %s\n", filename),
+		fmt.Sprintf("set define off\n"),
+		fmt.Sprintf("spool %s.log append\n", filename[:len(filename)-len(filepath.Ext(filename))]),
+	}
+}
 
-	return nil
+func (s *service) removeLineWithPrefix(lines []string, prefix string) []string {
+	result := make([]string, 0)
+	for _, line := range lines {
+		if !strings.HasPrefix(line, prefix) {
+			result = append(result, line)
+		}
+	}
+	return result
+}
+
+func (s *service) createInstallFileFooter() string {
+	return "spool off"
 }
 
 func (s *service) formModuleHeader(obj domain.OracleObject) string {
@@ -205,17 +198,51 @@ func (s *service) formObjectLines(rootDir string, obj domain.OracleObject) []str
 		fmt.Sprintf("%s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, rootDir, "@ ../../", -1), string(os.PathSeparator), "/", -1)),
 	}
 }
+func (s *service) formErrorFile(installDir string, oracleObjects []domain.OracleObject) domain.OracleFile {
+	objErrors := make(map[string][]domain.OracleObject)
+	errorLines := make([]string, 0)
 
-func (s *service) formInstallFiles(rootDir, commitMsg string, oracleObjects []domain.OracleObject) []domain.OracleFile {
-	objInstall := make(map[string][]domain.OracleObject)
+	for _, val := range oracleObjects {
+		for _, errMsg := range val.Errors {
+			objErrors[errMsg] = append(objErrors[errMsg], val)
+		}
+	}
+	for _, errMsg := range []string{domain.UnknownObjectType.Error(), domain.SchemaNotFound.Error(), domain.FileNotExists.Error()} {
+		for idx, val := range objErrors[errMsg] {
+			if idx == 0 {
+				errorLines = append(errorLines, errMsg)
+			}
+			errorLines = append(errorLines, val.File.FileDetails.Path)
+		}
+	}
+
+	return domain.OracleFile{
+		OracleDataType: domain.ErrorLog,
+		FileDetails: domain.File{
+			Name:      domain.ErrorLogFileName,
+			Path:      installDir + domain.ErrorLogFileName,
+			FileLines: errorLines,
+		},
+	}
+}
+
+func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracleObjects []domain.OracleObject) []domain.OracleFile {
+	type oiKey struct {
+		filename      string
+		schemaStrItem string
+	}
+	objInstall := make(map[oiKey][]domain.OracleObject)
+
 	installFileLines := make(map[string][]string)
-	//InstallLines := make([]string, 0)
+	installFiles := make([]domain.OracleFile, 0)
+	fileLines := make([]string, 0)
 
 	for _, obj := range oracleObjects {
 		for _, serverSchema := range obj.ServerSchemaList {
-			installFileName := domain.GetInstallFileNameByServerSchema(serverSchema)
+			installFileName := domain.ServerSchemaInstallFilenameDict[serverSchema]
+			schemaStrItem := domain.ServerSchemaSchemaStrItemDict[serverSchema]
 			if installFileName != "" {
-				objInstall[installFileName] = append(objInstall[installFileName], obj)
+				objInstall[oiKey{filename: installFileName, schemaStrItem: schemaStrItem}] = append(objInstall[oiKey{filename: installFileName, schemaStrItem: schemaStrItem}], obj)
 			}
 		}
 	}
@@ -223,56 +250,55 @@ func (s *service) formInstallFiles(rootDir, commitMsg string, oracleObjects []do
 	var curModuleH, prevModuleH, curObjectTypeH, prevObjectTypeH string
 	for key, objI := range objInstall {
 		s.sortOracleObjects(objI)
-		//check if file not exists add file header
-		//add commit header
-		installFileLines[key] = append(installFileLines[key], "")
-		installFileLines[key] = append(installFileLines[key], commitMsg)
+		addToFile := s.file.CheckFileExists(installDir + key.filename)
+		footer := s.createInstallFileFooter()
+		if addToFile {
+			fileLines, _ = s.file.ReadFileLines(installDir + key.filename)
+			installFileLines[key.filename] = append(installFileLines[key.filename], s.removeLineWithPrefix(fileLines, footer)...)
+		} else {
+			installFileLines[key.filename] = append(installFileLines[key.filename], s.createInstallFileHeader(key.filename, key.schemaStrItem)...)
+		}
+		installFileLines[key.filename] = append(installFileLines[key.filename], commitMsg)
 		for idx := range objI {
 			curModuleH = s.formModuleHeader(objI[idx])
-			curObjectTypeH = domain.GetDirNameByOracleObjectType(objI[idx].ObjectType)
+			curObjectTypeH = domain.OracleObjectTypeDirDict[objI[idx].ObjectType]
 			if idx > 0 {
 				prevModuleH = s.formModuleHeader(objI[idx-1])
-				prevObjectTypeH = domain.GetDirNameByOracleObjectType(objI[idx-1].ObjectType)
+				prevObjectTypeH = domain.OracleObjectTypeDirDict[objI[idx-1].ObjectType]
 			}
 
 			if curModuleH != prevModuleH {
-				installFileLines[key] = append(installFileLines[key], "")
-				installFileLines[key] = append(installFileLines[key], curModuleH)
+				installFileLines[key.filename] = append(installFileLines[key.filename], "")
+				installFileLines[key.filename] = append(installFileLines[key.filename], curModuleH)
 			}
 
 			if curModuleH != prevModuleH || curObjectTypeH != prevObjectTypeH {
-				installFileLines[key] = append(installFileLines[key], "")
-				installFileLines[key] = append(installFileLines[key], curObjectTypeH)
+				installFileLines[key.filename] = append(installFileLines[key.filename], "")
+				installFileLines[key.filename] = append(installFileLines[key.filename], curObjectTypeH)
 			}
 
-			installFileLines[key] = append(installFileLines[key], s.formObjectLines(rootDir, objI[idx])...)
-
-			//} else if idx > 0 && s.formModuleHeader(objI[idx-1]) != s.formModuleHeader(objI[idx]) {
-			//
-			//	if objI[idx-1].ModuleName != objI[idx-1].ModuleName {
-			//		installFiles[key] = append(installFiles[key], "")
-			//	}
-			//}
+			installFileLines[key.filename] = append(installFileLines[key.filename], s.formObjectLines(rootDir, objI[idx])...)
 		}
-		//add footer
+		installFileLines[key.filename] = append(installFileLines[key.filename], "")
+		installFileLines[key.filename] = append(installFileLines[key.filename], footer)
 	}
 
-	for key, ifls := range installFileLines {
-		for _, ifl := range ifls {
+	for key, lines := range installFileLines {
+		installFiles = append(installFiles, domain.OracleFile{OracleDataType: domain.Install,
+			FileDetails: domain.File{
+				Name:      key,
+				Path:      installDir + key,
+				FileLines: lines,
+			},
+		})
+		for _, ifl := range lines {
 			fmt.Printf("filename %s fileline %s\n", key, ifl)
 		}
 	}
-
-	//return domain.InstallFile{
-	//	Path:      installDir + domain.ErrorLogFileName,
-	//	FileLines: errorLines,
-	//	Type:      domain.ErrorLog,
-	//}
 	return nil
 }
 
-func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, oracleObjects []domain.OracleObject) []domain.OracleFile {
-	resultFiles := make([]domain.OracleFile, 0)
+func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, oracleObjects []domain.OracleObject) error {
 	objWErrors := make([]domain.OracleObject, 0)
 	objInstall := make([]domain.OracleObject, 0)
 
@@ -286,12 +312,22 @@ func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, orac
 	}
 
 	if len(objWErrors) > 1 {
-		resultFiles = append(resultFiles, s.formErrorLines(installDir, objWErrors))
+		errFile := s.formErrorFile(installDir, objWErrors)
+		if err := s.file.DeleteFile(errFile.FileDetails.Path); err != nil {
+			return err
+		}
+		if err := s.file.CreateFile(errFile.FileDetails.Path, errFile.FileDetails.FileLines); err != nil {
+			return err
+		}
 	}
 
 	if len(objInstall) > 1 {
-		resultFiles = append(resultFiles, s.formInstallFiles(rootDir, commitMsg, objInstall)...)
+		for _, installFile := range s.formInstallFiles(rootDir, installDir, commitMsg, objInstall) {
+			if err := s.file.CreateFile(installFile.FileDetails.Path, installFile.FileDetails.FileLines); err != nil {
+				return err
+			}
+		}
 	}
 
-	return resultFiles
+	return nil
 }

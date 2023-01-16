@@ -56,7 +56,7 @@ type OracleObjectServerSchema struct {
 	schema string
 }
 
-var SchemaStrServerSchemaDict = map[string]ServerSchema{
+var SchemaStrItemServerSchemaDict = map[string]ServerSchema{
 	"core": {
 		Server: "core",
 		Schema: "vtbs",
@@ -93,6 +93,29 @@ var SchemaStrServerSchemaDict = map[string]ServerSchema{
 		Server: "hpffm",
 		Schema: "vtbs_adesk",
 	},
+}
+
+var ServerSchemaSchemaStrItemDict = map[ServerSchema]string{
+	ServerSchema{
+		Server: "core",
+		Schema: "vtbs",
+	}: "core",
+	ServerSchema{
+		Server: "hpffm",
+		Schema: "vtbs",
+	}: "charger",
+	ServerSchema{
+		Server: "hpffm",
+		Schema: "vtbs_adesk",
+	}: "vtbs_adesk",
+	ServerSchema{
+		Server: "hpffm",
+		Schema: "vtbs_x_alaris",
+	}: "vtbs_x_alaris",
+	ServerSchema{
+		Server: "hpffm",
+		Schema: "vtbs_bi",
+	}: "vtbs_bi",
 }
 
 var ServerSchemaInstallFilenameDict = map[ServerSchema]string{
@@ -194,29 +217,8 @@ var OracleObjectTypeDirDict = map[int]string{
 }
 
 func GetServerSchemaBySchemaStrItem(schemaStrItem string) (ServerSchema, error) {
-	if val, ok := SchemaStrServerSchemaDict[schemaStrItem]; ok {
+	if val, ok := SchemaStrItemServerSchemaDict[schemaStrItem]; ok {
 		return val, nil
 	}
 	return ServerSchema{}, UnknownSchemaStrItem
-}
-
-func GetInstallFileNameByServerSchema(serverSchema ServerSchema) string {
-	if val, ok := ServerSchemaInstallFilenameDict[serverSchema]; ok {
-		return val
-	}
-	return ""
-}
-
-func GetMigrationFileNameByServerSchema(serverSchema ServerSchema) string {
-	if val, ok := ServerSchemaMigrationFilenameDict[serverSchema]; ok {
-		return val
-	}
-	return ""
-}
-
-func GetDirNameByOracleObjectType(objectType int) string {
-	if val, ok := OracleObjectTypeDirDict[objectType]; ok {
-		return val
-	}
-	return ""
 }

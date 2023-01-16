@@ -66,5 +66,5 @@ func (s *service) FormCurCommitHeaderMsg(curCommitHash string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("/*  %s(%s)  */", strings.Split(curCommit.Message, "\n")[0], curCommit.Committer.Name), nil
+	return fmt.Sprintf("-- %s(%s)", strings.Split(curCommit.Message, "\n")[0], curCommit.Committer.Name), nil
 }

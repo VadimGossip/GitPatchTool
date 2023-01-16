@@ -2,7 +2,6 @@ package patcher
 
 import (
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
-	"github.com/VadimGossip/gitPatchTool/internal/file"
 	"github.com/VadimGossip/gitPatchTool/internal/gitwalker"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/extractor"
 	"github.com/VadimGossip/gitPatchTool/internal/oratool/writer"
@@ -14,7 +13,6 @@ type Service interface {
 
 type service struct {
 	cfg       *domain.Config
-	file      file.Service
 	gitWalker gitwalker.Service
 	extractor extractor.Service
 	writer    writer.Service
@@ -22,17 +20,8 @@ type service struct {
 
 var _ Service = (*service)(nil)
 
-func NewService(cfg *domain.Config, file file.Service, gitWalker gitwalker.Service, extractor extractor.Service, writer writer.Service) *service {
-	return &service{cfg: cfg, file: file, gitWalker: gitWalker, extractor: extractor, writer: writer}
-}
-
-func (s *service) removeSessionFiles() error {
-	for _, fName := range []string{domain.ErrorLogFileName, domain.WarningLogFileName} {
-		if err := s.file.DeleteFile(s.cfg.Path.InstallDir + fName); err != nil {
-			return err
-		}
-	}
-	return nil
+func NewService(cfg *domain.Config, gitWalker gitwalker.Service, extractor extractor.Service, writer writer.Service) *service {
+	return &service{cfg: cfg, gitWalker: gitWalker, extractor: extractor, writer: writer}
 }
 
 func (s *service) CreatePatch() error {
@@ -48,17 +37,5 @@ func (s *service) CreatePatch() error {
 
 	oracleObj := s.extractor.CreateOracleObjects(gitFiles)
 
-	installFiles := s.writer.CreateInstallFiles(s.cfg.Path.RootDir, s.cfg.Path.InstallDir, commitMsg, oracleObj)
-
-	if err := s.removeSessionFiles(); err != nil {
-		return err
-	}
-
-	for _, iFile := range installFiles {
-		if err := s.file.CreateFile(iFile.FileDetails.Path, iFile.FileDetails.FileLines); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return s.writer.CreateInstallFiles(s.cfg.Path.RootDir, s.cfg.Path.InstallDir, commitMsg, oracleObj)
 }

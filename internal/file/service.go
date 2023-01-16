@@ -15,7 +15,7 @@ type Service interface {
 	Walk(path string, extFilter []string) ([]domain.File, error)
 	CreateFile(path string, lines []string) error
 	DeleteFile(path string) error
-	ReadFile(path string) error
+	ReadFileLines(path string) ([]string, error)
 }
 
 type service struct {
@@ -99,6 +99,7 @@ func (s *service) Walk(path string, extFilter []string) ([]domain.File, error) {
 }
 
 func (s *service) CreateFile(path string, lines []string) error {
+	return nil
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -121,11 +122,18 @@ func (s *service) DeleteFile(path string) error {
 	return nil
 }
 
-func (s *service) ReadFile(path string) error {
+func (s *service) ReadFileLines(path string) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
-	return nil
+
+	fileLines := make([]string, 0)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		fileLines = append(fileLines, scanner.Text())
+	}
+
+	return fileLines, nil
 }
