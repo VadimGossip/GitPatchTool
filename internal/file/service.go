@@ -99,7 +99,6 @@ func (s *service) Walk(path string, extFilter []string) ([]domain.File, error) {
 }
 
 func (s *service) CreateFile(path string, lines []string) error {
-	return nil
 	f, err := os.Create(path)
 	if err != nil {
 		return err
