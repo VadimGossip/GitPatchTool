@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/file"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"os"
 	"path/filepath"
 	"sort"
@@ -23,90 +25,6 @@ var _ Service = (*service)(nil)
 func NewService(file file.Service) *service {
 	return &service{file: file}
 }
-
-//func (s *service) getInstallFileName(serverSchema []domain.ServerSchema) string {
-//   return domain.GetInstallFileNameByServerSchema(serverSchema)
-//
-//}
-
-////needToReworkIn Future for schema install
-//func (s *service) getInstallWeight(objectType int) int {
-//	sortMap := map[int]int{
-//		domain.
-//	}
-//
-
-//type key struct {
-//	objectType int
-//	action     int
-//}
-//sortMap := map[key]int{
-//	{
-//		objectType: domain.OracleScriptsBeforeType, action: domain.AddAction} : 1,
-//}
-//
-//vtbs_clogs delete(
-//	)
-
-//allowed_object_type_sort_mask = {"tablespaces"      : 0
-//	,"directories"      : 1
-//	,"dblinks"          : 2
-//	,"users"            : 3
-//	,"synonyms"         : 4
-//	,"scripts_before"   : 5
-//	,"contexts"         : 6
-//	,"sequences"        : 7
-//	,"types"            : 8
-//	,"tables"           : 9
-//	,"mlogs"            : 10
-//	,"mviews"           : 11
-//	,"types"            : 12
-//	,"packages"         : 13
-//	,"views"            : 14
-//	,"triggers"         : 15
-//	,"vtbs_tasks"       : 16
-//	,"rows"             : 17
-//	,"roles"            : 18
-//	,"functions"        : 19
-//	,"vtbs_clogs"       : 20
-//	,"scripts_after"    : 21
-//	,"scripts_migration": 22}
-
-//OracleTablespaceType = iota
-//OracleDirectoryType
-//OracleDbLinkType
-//OracleUserType
-//OracleSynonymType
-//OracleContextType
-//OracleSequencesType
-//OracleTypeType
-//OracleTableType
-//OracleMLogType
-//OracleMViewType
-//OraclePackageType
-//OracleViewType
-//OracleTriggerType
-//OracleVTaskType
-//OracleRowType
-//OracleRoleType
-//OracleFunctionType
-//OracleVClogType
-//OracleTableFKType
-//OracleScriptsBeforeType
-//OracleScriptsAfterType
-//OracleScriptsMigrationType
-//
-
-//object_type_skip_set = {'install'
-//	,'tables'
-//	,'rows'
-//	,'roles'
-//	,'users'
-//	,'dblinks'
-//	,'tablespaces'}
-
-//	return 0
-//}
 
 func (s *service) getPackageWeight(oracleObject domain.OracleObject) int {
 	if strings.HasSuffix(oracleObject.ObjectName, "read") {
@@ -157,12 +75,13 @@ func (s *service) sortOracleObjects(oracleObjects []domain.OracleObject) {
 	})
 }
 
-func (s *service) createInstallFileHeader(schemaStrItem, filename string) []string {
+func (s *service) createInstallFileHeader(filename, schemaStrItem string) []string {
 	return []string{
-		fmt.Sprintf("-- Schema: %s\n", schemaStrItem),
-		fmt.Sprintf("prompt install %s\n", filename),
-		fmt.Sprintf("set define off\n"),
-		fmt.Sprintf("spool %s.log append\n", filename[:len(filename)-len(filepath.Ext(filename))]),
+		fmt.Sprintf("-- Schema: %s", schemaStrItem),
+		fmt.Sprintf("prompt install %s", filename),
+		fmt.Sprintf("set define off"),
+		fmt.Sprintf("spool %s.log append", filename[:len(filename)-len(filepath.Ext(filename))]),
+		fmt.Sprintf(""),
 	}
 }
 
@@ -190,6 +109,10 @@ func (s *service) formModuleHeader(obj domain.OracleObject) string {
 	} else {
 		return fmt.Sprintf("-------------------------%s/%s-------------------------", obj.EpicModuleName, obj.ModuleName)
 	}
+}
+
+func (s *service) formObjectTypeHeader(oracleObjectType int) string {
+	return fmt.Sprintf("prompt %s", domain.OracleObjectTypeDirDict[oracleObjectType])
 }
 
 func (s *service) formObjectLines(rootDir string, obj domain.OracleObject) []string {
@@ -240,7 +163,7 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 	for _, obj := range oracleObjects {
 		for _, serverSchema := range obj.ServerSchemaList {
 			installFileName := domain.ServerSchemaInstallFilenameDict[serverSchema]
-			schemaStrItem := domain.ServerSchemaSchemaStrItemDict[serverSchema]
+			schemaStrItem := cases.Title(language.English, cases.Compact).String(domain.ServerSchemaSchemaStrItemDict[serverSchema])
 			if installFileName != "" {
 				objInstall[oiKey{filename: installFileName, schemaStrItem: schemaStrItem}] = append(objInstall[oiKey{filename: installFileName, schemaStrItem: schemaStrItem}], obj)
 			}
@@ -261,10 +184,10 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 		installFileLines[key.filename] = append(installFileLines[key.filename], commitMsg)
 		for idx := range objI {
 			curModuleH = s.formModuleHeader(objI[idx])
-			curObjectTypeH = domain.OracleObjectTypeDirDict[objI[idx].ObjectType]
+			curObjectTypeH = s.formObjectTypeHeader(objI[idx].ObjectType)
 			if idx > 0 {
 				prevModuleH = s.formModuleHeader(objI[idx-1])
-				prevObjectTypeH = domain.OracleObjectTypeDirDict[objI[idx-1].ObjectType]
+				prevObjectTypeH = s.formObjectTypeHeader(objI[idx-1].ObjectType)
 			}
 
 			if curModuleH != prevModuleH {
@@ -291,11 +214,11 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 				FileLines: lines,
 			},
 		})
-		for _, ifl := range lines {
-			fmt.Printf("filename %s fileline %s\n", key, ifl)
-		}
+		//for _, ifl := range lines {
+		//	fmt.Printf("filename %s fileline %s\n", key, ifl)
+		//}
 	}
-	return nil
+	return installFiles
 }
 
 func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, oracleObjects []domain.OracleObject) error {
