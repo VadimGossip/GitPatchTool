@@ -141,6 +141,58 @@ var ServerSchemaMigrationFilenameDict = map[ServerSchema]string{
 	}: VtbsBiHpffmMigrationName,
 }
 
+var DirOracleObjectTypeDict = map[string]int{
+	"tablespaces":       OracleTablespaceType,
+	"directories":       OracleDirectoryType,
+	"dblinks":           OracleDbLinkType,
+	"users":             OracleUserType,
+	"synonyms":          OracleSynonymType,
+	"contexts":          OracleContextType,
+	"sequences":         OracleSequencesType,
+	"types":             OracleTypeType,
+	"tables":            OracleTableType,
+	"mlogs":             OracleMLogType,
+	"mviews":            OracleMViewType,
+	"packages":          OraclePackageType,
+	"views":             OracleViewType,
+	"triggers":          OracleTriggerType,
+	"vtbs_tasks":        OracleVTaskType,
+	"rows":              OracleRowType,
+	"roles":             OracleRoleType,
+	"functions":         OracleFunctionType,
+	"vtbs_clogs":        OracleVClogType,
+	"tables.fk":         OracleTableFKType,
+	"scripts_before:":   OracleScriptsBeforeType,
+	"scripts_after:":    OracleScriptsAfterType,
+	"scripts_migration": OracleScriptsMigrationType,
+}
+
+var OracleObjectTypeDirDict = map[int]string{
+	OracleTablespaceType:       "tablespaces",
+	OracleDirectoryType:        "directories",
+	OracleDbLinkType:           "dblinks",
+	OracleUserType:             "users",
+	OracleSynonymType:          "synonyms",
+	OracleContextType:          "contexts",
+	OracleSequencesType:        "sequences",
+	OracleTypeType:             "types",
+	OracleTableType:            "tables",
+	OracleMLogType:             "mlogs",
+	OracleMViewType:            "mviews",
+	OraclePackageType:          "packages",
+	OracleViewType:             "views",
+	OracleTriggerType:          "triggers",
+	OracleVTaskType:            "vtbs_tasks",
+	OracleRowType:              "rows",
+	OracleRoleType:             "roles",
+	OracleFunctionType:         "functions",
+	OracleVClogType:            "vtbs_clogs",
+	OracleTableFKType:          "tables.fk",
+	OracleScriptsBeforeType:    "scripts_before:",
+	OracleScriptsAfterType:     "scripts_after:",
+	OracleScriptsMigrationType: "scripts_migration",
+}
+
 func GetServerSchemaBySchemaStrItem(schemaStrItem string) (ServerSchema, error) {
 	if val, ok := SchemaStrServerSchemaDict[schemaStrItem]; ok {
 		return val, nil
@@ -157,6 +209,13 @@ func GetInstallFileNameByServerSchema(serverSchema ServerSchema) string {
 
 func GetMigrationFileNameByServerSchema(serverSchema ServerSchema) string {
 	if val, ok := ServerSchemaMigrationFilenameDict[serverSchema]; ok {
+		return val
+	}
+	return ""
+}
+
+func GetDirNameByOracleObjectType(objectType int) string {
+	if val, ok := OracleObjectTypeDirDict[objectType]; ok {
 		return val
 	}
 	return ""
