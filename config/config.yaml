@@ -1,6 +1,6 @@
 work_options:
   mode: patch
-  commitId: d01e4527852c6d70e66f391309b8771cf5683cbe  #Id of commit after that we look for changed objects including
+  commitId: d01e4527852c6d70e66f391309b8771cf5683cbe #Id of commit after that we look for changed objects including
   path:
     installDir: e:\WorkSpace\TCS_Oracle\install\2022ww51-02\ # directory where we will put install files
     rootDir: e:\Workspace\TCS_oracle\ # directory from where we get oracle objects

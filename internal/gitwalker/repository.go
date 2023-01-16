@@ -12,6 +12,7 @@ import (
 
 type Repository interface {
 	GetHeadCommit() (*object.Commit, error)
+	GetCurrentCommit(hashStr string) (*object.Commit, error)
 	GetPreviousCommit(hashStr string) (*object.Commit, error)
 	GetFilesDiff(head, till *object.Commit) ([]domain.File, error)
 }
@@ -41,6 +42,11 @@ func (r *repository) GetHeadCommit() (*object.Commit, error) {
 	return rCommit, nil
 }
 
+func (r *repository) GetCurrentCommit(hashStr string) (*object.Commit, error) {
+	currentHash := plumbing.NewHash(hashStr)
+	return r.gitRepo.CommitObject(currentHash)
+}
+
 func (r *repository) GetPreviousCommit(hashStr string) (*object.Commit, error) {
 	currentHash := plumbing.NewHash(hashStr)
 	cIter, err := r.gitRepo.Log(&git.LogOptions{From: currentHash})
@@ -58,6 +64,7 @@ func (r *repository) GetPreviousCommit(hashStr string) (*object.Commit, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return nextCommit, nil
 }
 

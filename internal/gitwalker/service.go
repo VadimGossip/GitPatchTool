@@ -1,11 +1,14 @@
 package gitwalker
 
 import (
+	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
+	"strings"
 )
 
 type Service interface {
 	GetFilesChanged(curCommitHash string) ([]domain.File, error)
+	FormCurCommitHeaderMsg(curCommitHash string) (string, error)
 }
 
 type service struct {
@@ -56,4 +59,12 @@ func (s *service) GetFilesChanged(curCommitHash string) ([]domain.File, error) {
 	}
 
 	return s.leaveLastState(files), nil
+}
+
+func (s *service) FormCurCommitHeaderMsg(curCommitHash string) (string, error) {
+	curCommit, err := s.repo.GetCurrentCommit(curCommitHash)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("/*  %s(%s)  */", strings.Split(curCommit.Message, "\n")[0], curCommit.Committer.Name), nil
 }

@@ -40,9 +40,15 @@ func (s *service) CreatePatch() error {
 	if err != nil {
 		return err
 	}
+
+	commitMsg, err := s.gitWalker.FormCurCommitHeaderMsg(s.cfg.CommitId)
+	if err != nil {
+		return err
+	}
+
 	oracleObj := s.extractor.CreateOracleObjects(gitFiles)
 
-	installFiles := s.writer.CreateInstallFiles(s.cfg.Path.InstallDir, oracleObj)
+	installFiles := s.writer.CreateInstallFiles(s.cfg.Path.RootDir, s.cfg.Path.InstallDir, commitMsg, oracleObj)
 
 	if err := s.removeSessionFiles(); err != nil {
 		return err
