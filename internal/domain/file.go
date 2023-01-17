@@ -49,3 +49,10 @@ type OracleFile struct {
 	OracleDataType int
 	FileDetails    File
 }
+
+var ActionNameDict = map[int]string{
+	AddAction:    "Add",
+	DeleteAction: "Delete",
+	ModifyAction: "Modify",
+	RenameAction: "Rename",
+}

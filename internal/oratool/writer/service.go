@@ -26,6 +26,76 @@ func NewService(file file.Service) *service {
 	return &service{file: file}
 }
 
+type typeAction struct {
+	oracleObjectType int
+	action           int
+}
+
+var manualOperations = map[typeAction]struct{}{
+	//Modify Action
+	{domain.OracleTablespaceType, domain.ModifyAction}:       {},
+	{domain.OracleDirectoryType, domain.ModifyAction}:        {},
+	{domain.OracleDbLinkType, domain.ModifyAction}:           {},
+	{domain.OracleUserType, domain.ModifyAction}:             {},
+	{domain.OracleVTaskType, domain.ModifyAction}:            {},
+	{domain.OracleRowType, domain.ModifyAction}:              {},
+	{domain.OracleRoleType, domain.ModifyAction}:             {},
+	{domain.OracleTableFKType, domain.ModifyAction}:          {},
+	{domain.OracleScriptsBeforeType, domain.ModifyAction}:    {},
+	{domain.OracleScriptsAfterType, domain.ModifyAction}:     {},
+	{domain.OracleScriptsMigrationType, domain.ModifyAction}: {},
+
+	//Delete Action
+	{domain.OracleTablespaceType, domain.DeleteAction}:       {},
+	{domain.OracleDirectoryType, domain.DeleteAction}:        {},
+	{domain.OracleDbLinkType, domain.DeleteAction}:           {},
+	{domain.OracleUserType, domain.DeleteAction}:             {},
+	{domain.OracleSynonymType, domain.DeleteAction}:          {},
+	{domain.OracleContextType, domain.DeleteAction}:          {},
+	{domain.OracleSequencesType, domain.DeleteAction}:        {},
+	{domain.OracleTypeType, domain.DeleteAction}:             {},
+	{domain.OracleTableType, domain.DeleteAction}:            {},
+	{domain.OracleMLogType, domain.DeleteAction}:             {},
+	{domain.OracleMViewType, domain.DeleteAction}:            {},
+	{domain.OraclePackageType, domain.DeleteAction}:          {},
+	{domain.OracleViewType, domain.DeleteAction}:             {},
+	{domain.OracleTriggerType, domain.DeleteAction}:          {},
+	{domain.OracleVTaskType, domain.DeleteAction}:            {},
+	{domain.OracleRowType, domain.DeleteAction}:              {},
+	{domain.OracleRoleType, domain.DeleteAction}:             {},
+	{domain.OracleFunctionType, domain.DeleteAction}:         {},
+	{domain.OracleVClogType, domain.DeleteAction}:            {},
+	{domain.OracleTableFKType, domain.DeleteAction}:          {},
+	{domain.OracleScriptsBeforeType, domain.DeleteAction}:    {},
+	{domain.OracleScriptsAfterType, domain.DeleteAction}:     {},
+	{domain.OracleScriptsMigrationType, domain.DeleteAction}: {},
+
+	//RenameAction
+	{domain.OracleTablespaceType, domain.RenameAction}:       {},
+	{domain.OracleDirectoryType, domain.RenameAction}:        {},
+	{domain.OracleDbLinkType, domain.RenameAction}:           {},
+	{domain.OracleUserType, domain.RenameAction}:             {},
+	{domain.OracleSynonymType, domain.RenameAction}:          {},
+	{domain.OracleContextType, domain.RenameAction}:          {},
+	{domain.OracleSequencesType, domain.RenameAction}:        {},
+	{domain.OracleTypeType, domain.RenameAction}:             {},
+	{domain.OracleTableType, domain.RenameAction}:            {},
+	{domain.OracleMLogType, domain.RenameAction}:             {},
+	{domain.OracleMViewType, domain.RenameAction}:            {},
+	{domain.OraclePackageType, domain.RenameAction}:          {},
+	{domain.OracleViewType, domain.RenameAction}:             {},
+	{domain.OracleTriggerType, domain.RenameAction}:          {},
+	{domain.OracleVTaskType, domain.RenameAction}:            {},
+	{domain.OracleRowType, domain.RenameAction}:              {},
+	{domain.OracleRoleType, domain.RenameAction}:             {},
+	{domain.OracleFunctionType, domain.RenameAction}:         {},
+	{domain.OracleVClogType, domain.RenameAction}:            {},
+	{domain.OracleTableFKType, domain.RenameAction}:          {},
+	{domain.OracleScriptsBeforeType, domain.RenameAction}:    {},
+	{domain.OracleScriptsAfterType, domain.RenameAction}:     {},
+	{domain.OracleScriptsMigrationType, domain.RenameAction}: {},
+}
+
 func (s *service) getPackageWeight(oracleObject domain.OracleObject) int {
 	if strings.HasSuffix(oracleObject.ObjectName, "read") {
 		return 0
@@ -125,17 +195,17 @@ func (s *service) formErrorFile(installDir string, oracleObjects []domain.Oracle
 	objErrors := make(map[string][]domain.OracleObject)
 	errorLines := make([]string, 0)
 
-	for _, val := range oracleObjects {
-		for _, errMsg := range val.Errors {
-			objErrors[errMsg] = append(objErrors[errMsg], val)
+	for _, obj := range oracleObjects {
+		for _, errMsg := range obj.Errors {
+			objErrors[errMsg] = append(objErrors[errMsg], obj)
 		}
 	}
 	for _, errMsg := range []string{domain.UnknownObjectType.Error(), domain.SchemaNotFound.Error(), domain.FileNotExists.Error()} {
-		for idx, val := range objErrors[errMsg] {
+		for idx, e := range objErrors[errMsg] {
 			if idx == 0 {
 				errorLines = append(errorLines, errMsg)
 			}
-			errorLines = append(errorLines, val.File.FileDetails.Path)
+			errorLines = append(errorLines, e.File.FileDetails.Path)
 		}
 	}
 
@@ -145,6 +215,33 @@ func (s *service) formErrorFile(installDir string, oracleObjects []domain.Oracle
 			Name:      domain.ErrorLogFileName,
 			Path:      installDir + domain.ErrorLogFileName,
 			FileLines: errorLines,
+		},
+	}
+}
+
+func (s *service) formWarningFile(installDir string, oracleObjects []domain.OracleObject) domain.OracleFile {
+	objWarnings := make(map[int][]domain.OracleObject)
+	warningLines := make([]string, 0)
+
+	for _, obj := range oracleObjects {
+		objWarnings[obj.File.FileDetails.GitDetails.Action] = append(objWarnings[obj.File.FileDetails.GitDetails.Action], obj)
+	}
+	for _, action := range []int{domain.AddAction, domain.ModifyAction, domain.DeleteAction, domain.RenameAction} {
+		for idx, w := range objWarnings[action] {
+			if idx == 0 {
+				warningLines = append(warningLines, domain.ActionNameDict[action])
+				warningLines = append(warningLines, "")
+			}
+			warningLines = append(warningLines, w.File.FileDetails.Path)
+		}
+	}
+
+	return domain.OracleFile{
+		OracleDataType: domain.WarningLog,
+		FileDetails: domain.File{
+			Name:      domain.WarningLogFileName,
+			Path:      installDir + domain.WarningLogFileName,
+			FileLines: warningLines,
 		},
 	}
 }
@@ -214,28 +311,31 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 				FileLines: lines,
 			},
 		})
-		//for _, ifl := range lines {
-		//	fmt.Printf("filename %s fileline %s\n", key, ifl)
-		//}
 	}
 	return installFiles
 }
 
 func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, oracleObjects []domain.OracleObject) error {
-	objWErrors := make([]domain.OracleObject, 0)
+	objErrors := make([]domain.OracleObject, 0)
+	objWarnings := make([]domain.OracleObject, 0)
 	objInstall := make([]domain.OracleObject, 0)
 
 	for _, obj := range oracleObjects {
-		if len(obj.Errors) != 0 {
-			objWErrors = append(objWErrors, obj)
-		} else if obj.File.OracleDataType == domain.Data {
-			objInstall = append(objInstall, obj)
+		if obj.File.OracleDataType == domain.Data {
+			if len(obj.Errors) != 0 {
+				objErrors = append(objErrors, obj)
+			} else {
+				if _, ok := manualOperations[typeAction{obj.ObjectType, obj.File.FileDetails.GitDetails.Action}]; !ok {
+					objInstall = append(objInstall, obj)
+				} else {
+					objWarnings = append(objWarnings, obj)
+				}
+			}
 		}
-
 	}
 
-	if len(objWErrors) > 1 {
-		errFile := s.formErrorFile(installDir, objWErrors)
+	if len(objErrors) > 1 {
+		errFile := s.formErrorFile(installDir, objErrors)
 		if err := s.file.DeleteFile(errFile.FileDetails.Path); err != nil {
 			return err
 		}
@@ -244,11 +344,21 @@ func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, orac
 		}
 	}
 
-	if len(objInstall) > 1 {
+	if len(objWarnings) > 1 {
 		for _, installFile := range s.formInstallFiles(rootDir, installDir, commitMsg, objInstall) {
 			if err := s.file.CreateFile(installFile.FileDetails.Path, installFile.FileDetails.FileLines); err != nil {
 				return err
 			}
+		}
+	}
+
+	if len(objWarnings) > 1 {
+		warningFile := s.formWarningFile(installDir, objWarnings)
+		if err := s.file.DeleteFile(warningFile.FileDetails.Path); err != nil {
+			return err
+		}
+		if err := s.file.CreateFile(warningFile.FileDetails.Path, warningFile.FileDetails.FileLines); err != nil {
+			return err
 		}
 	}
 
