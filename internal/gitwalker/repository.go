@@ -1,6 +1,7 @@
 package gitwalker
 
 import (
+	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -161,8 +162,11 @@ func (r *repository) GetFilesDiff(headCommit, fromCommit *object.Commit) ([]doma
 	}); err != nil {
 		return nil, err
 	}
+
 	for i := len(files) - 1; i >= 0; i-- {
 		orderedFiles = append(orderedFiles, files[i])
 	}
-	return files, nil
+
+	fmt.Println(orderedFiles)
+	return orderedFiles, nil
 }

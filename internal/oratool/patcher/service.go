@@ -29,7 +29,6 @@ func (s *service) CreatePatch() error {
 	if err != nil {
 		return err
 	}
-	//return nil
 
 	commitMsg, err := s.gitWalker.FormCurCommitHeaderMsg(s.cfg.CommitId)
 	if err != nil {

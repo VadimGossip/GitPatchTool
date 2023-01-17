@@ -252,7 +252,6 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 		schemaStrItem string
 	}
 	objInstall := make(map[oiKey][]domain.OracleObject)
-
 	installFileLines := make(map[string][]string)
 	installFiles := make([]domain.OracleFile, 0)
 	fileLines := make([]string, 0)
@@ -269,6 +268,7 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 
 	var curModuleH, prevModuleH, curObjectTypeH, prevObjectTypeH string
 	for key, objI := range objInstall {
+
 		s.sortOracleObjects(objI)
 		addToFile := s.file.CheckFileExists(installDir + key.filename)
 		footer := s.createInstallFileFooter()
@@ -315,10 +315,24 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 	return installFiles
 }
 
+func (s *service) removeSessionFiles(installDir string) error {
+	if err := s.file.DeleteFile(installDir + domain.ErrorLogFileName); err != nil {
+		return err
+	}
+	if err := s.file.DeleteFile(installDir + domain.WarningLogFileName); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, oracleObjects []domain.OracleObject) error {
 	objErrors := make([]domain.OracleObject, 0)
 	objWarnings := make([]domain.OracleObject, 0)
 	objInstall := make([]domain.OracleObject, 0)
+
+	if err := s.removeSessionFiles(installDir); err != nil {
+		return err
+	}
 
 	for _, obj := range oracleObjects {
 		if obj.File.OracleDataType == domain.Data {
@@ -334,31 +348,25 @@ func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, orac
 		}
 	}
 
-	if len(objErrors) > 1 {
+	if len(objErrors) > 0 {
 		errFile := s.formErrorFile(installDir, objErrors)
-		if err := s.file.DeleteFile(errFile.FileDetails.Path); err != nil {
-			return err
-		}
 		if err := s.file.CreateFile(errFile.FileDetails.Path, errFile.FileDetails.FileLines); err != nil {
 			return err
 		}
 	}
 
-	if len(objWarnings) > 1 {
+	if len(objWarnings) > 0 {
+		warningFile := s.formWarningFile(installDir, objWarnings)
+		if err := s.file.CreateFile(warningFile.FileDetails.Path, warningFile.FileDetails.FileLines); err != nil {
+			return err
+		}
+	}
+
+	if len(objInstall) > 0 {
 		for _, installFile := range s.formInstallFiles(rootDir, installDir, commitMsg, objInstall) {
 			if err := s.file.CreateFile(installFile.FileDetails.Path, installFile.FileDetails.FileLines); err != nil {
 				return err
 			}
-		}
-	}
-
-	if len(objWarnings) > 1 {
-		warningFile := s.formWarningFile(installDir, objWarnings)
-		if err := s.file.DeleteFile(warningFile.FileDetails.Path); err != nil {
-			return err
-		}
-		if err := s.file.CreateFile(warningFile.FileDetails.Path, warningFile.FileDetails.FileLines); err != nil {
-			return err
 		}
 	}
 
