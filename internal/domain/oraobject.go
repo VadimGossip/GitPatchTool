@@ -14,6 +14,7 @@ const (
 	OracleSequencesType
 	OracleTypeType
 	OracleTableType
+	OracleTableFKType
 	OracleMLogType
 	OracleMViewType
 	OraclePackageType
@@ -24,7 +25,6 @@ const (
 	OracleRoleType
 	OracleFunctionType
 	OracleVClogType
-	OracleTableFKType
 	OracleScriptsBeforeType
 	OracleScriptsAfterType
 	OracleScriptsMigrationType

@@ -1,7 +1,6 @@
 package gitwalker
 
 import (
-	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -139,7 +138,6 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 			}
 		}
 	}
-	fmt.Printf("prev commit %s curr commit %s files%d\n", nextCommit.Hash.String(), currentCommit.Hash.String(), len(*files))
 	return nil
 }
 
@@ -149,10 +147,11 @@ func (r *repository) commitSuitable(commit object.Commit) bool {
 
 func (r *repository) GetFilesDiff(headCommit, fromCommit *object.Commit) ([]domain.File, error) {
 	files := make([]domain.File, 0)
+	orderedFiles := make([]domain.File, 0)
 	commitIter, err := r.gitRepo.Log(&git.LogOptions{From: headCommit.Hash, Order: git.LogOrderCommitterTime, Since: &fromCommit.Committer.When})
 
 	if err := commitIter.ForEach(func(commit *object.Commit) error {
-		if r.commitSuitable(*headCommit) {
+		if r.commitSuitable(*headCommit) && headCommit.Hash != commit.Hash {
 			if err = r.addFileChanges(headCommit, commit, &files); err != nil {
 				return err
 			}
@@ -162,6 +161,8 @@ func (r *repository) GetFilesDiff(headCommit, fromCommit *object.Commit) ([]doma
 	}); err != nil {
 		return nil, err
 	}
-
+	for i := len(files) - 1; i >= 0; i-- {
+		orderedFiles = append(orderedFiles, files[i])
+	}
 	return files, nil
 }
