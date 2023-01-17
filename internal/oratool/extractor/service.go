@@ -1,7 +1,6 @@
 package extractor
 
 import (
-	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/file"
 	"os"
@@ -116,7 +115,6 @@ func (s *service) CreateOracleObjects(rootDir, installDir string, files []domain
 				OracleDataType: domain.Data,
 				FileDetails:    f,
 			}
-			fmt.Println(f.Path)
 			obj := domain.OracleObject{File: oracleFile}
 			s.resolveAdditionalPathInfo(&obj)
 			s.addSchema(&obj)
