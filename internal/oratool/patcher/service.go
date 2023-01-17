@@ -29,13 +29,14 @@ func (s *service) CreatePatch() error {
 	if err != nil {
 		return err
 	}
+	//return nil
 
 	commitMsg, err := s.gitWalker.FormCurCommitHeaderMsg(s.cfg.CommitId)
 	if err != nil {
 		return err
 	}
 
-	oracleObj := s.extractor.CreateOracleObjects(gitFiles)
+	oracleObj := s.extractor.CreateOracleObjects(s.cfg.Path.RootDir, s.cfg.Path.InstallDir, gitFiles)
 
 	return s.writer.CreateInstallFiles(s.cfg.Path.RootDir, s.cfg.Path.InstallDir, commitMsg, oracleObj)
 }

@@ -1,6 +1,7 @@
 package extractor
 
 import (
+	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/VadimGossip/gitPatchTool/internal/file"
 	"os"
@@ -9,8 +10,7 @@ import (
 )
 
 type Service interface {
-	CreateOracleObjects(files []domain.File) []domain.OracleObject
-	WalkAndCreateOracleObjects(rootDir string) ([]domain.OracleObject, error)
+	CreateOracleObjects(rootDir, installDir string, files []domain.File) []domain.OracleObject
 }
 
 type service struct {
@@ -24,32 +24,7 @@ func NewService(fileWalker file.Service) *service {
 }
 
 func (s *service) getObjectTypeFromDir(objectTypeDir, objectName string) (int, error) {
-	matchMap := map[string]int{
-		"tablespaces":       domain.OracleTablespaceType,
-		"directories":       domain.OracleDirectoryType,
-		"dblinks":           domain.OracleDbLinkType,
-		"users":             domain.OracleUserType,
-		"synonyms":          domain.OracleSynonymType,
-		"contexts":          domain.OracleContextType,
-		"sequences":         domain.OracleSequencesType,
-		"types":             domain.OracleTypeType,
-		"tables":            domain.OracleTableType,
-		"mlogs":             domain.OracleMLogType,
-		"mviews":            domain.OracleMViewType,
-		"packages":          domain.OraclePackageType,
-		"views":             domain.OracleViewType,
-		"triggers":          domain.OracleTriggerType,
-		"vtbs_tasks":        domain.OracleVTaskType,
-		"rows":              domain.OracleRowType,
-		"roles":             domain.OracleRoleType,
-		"functions":         domain.OracleFunctionType,
-		"vtbs_clogs":        domain.OracleVClogType,
-		"tables.fk":         domain.OracleTableFKType,
-		"scripts_before:":   domain.OracleScriptsBeforeType,
-		"scripts_after:":    domain.OracleScriptsAfterType,
-		"scripts_migration": domain.OracleScriptsMigrationType,
-	}
-	if val, ok := matchMap[objectTypeDir]; ok {
+	if val, ok := domain.DirOracleObjectTypeDict[objectTypeDir]; ok {
 		if len(strings.Split(objectName, ".")) > 1 && val == domain.OracleTableType {
 			return domain.OracleTriggerType, nil
 		}
@@ -87,6 +62,16 @@ func (s *service) parseSchema(schemaStr string) map[domain.ServerSchema]struct{}
 	return nil
 }
 
+func (s *service) fileSuitable(rootDir, installDir, path string) bool {
+	parts := strings.Split(strings.Replace(path, rootDir, "", -1), string(os.PathSeparator))
+	notInInstall := strings.ToLower(parts[0]) == "install" && (!strings.HasPrefix(path, installDir))
+	inInstallButNotScript := len(parts) >= 2 && strings.HasPrefix(path, installDir) && (domain.DirOracleObjectTypeDict[parts[len(parts)-2]] != domain.OracleScriptsMigrationType ||
+		domain.DirOracleObjectTypeDict[parts[len(parts)-2]] != domain.OracleScriptsBeforeType ||
+		domain.DirOracleObjectTypeDict[parts[len(parts)-2]] != domain.OracleScriptsAfterType)
+
+	return !(notInInstall || inInstallButNotScript)
+}
+
 func (s *service) resolveAdditionalPathInfo(oracleObj *domain.OracleObject) {
 	var err error
 	if !s.fileWalker.CheckFileExists(oracleObj.File.FileDetails.Path) && oracleObj.File.FileDetails.GitDetails.Action != domain.DeleteAction {
@@ -94,16 +79,6 @@ func (s *service) resolveAdditionalPathInfo(oracleObj *domain.OracleObject) {
 	}
 
 	parts := strings.Split(oracleObj.File.FileDetails.Path, string(os.PathSeparator))
-	if len(parts) >= 2 && parts[len(parts)-2] == "install" {
-		if parts[len(parts)-1] == domain.ErrorLogFileName {
-			oracleObj.File.OracleDataType = domain.ErrorLog
-		} else if parts[len(parts)-1] == domain.WarningLogFileName {
-			oracleObj.File.OracleDataType = domain.WarningLog
-		} else {
-			oracleObj.File.OracleDataType = domain.Install
-		}
-	}
-
 	if len(parts) >= 4 {
 		oracleObj.EpicModuleName = parts[len(parts)-4]
 		oracleObj.ModuleName = parts[len(parts)-3]
@@ -133,26 +108,21 @@ func (s *service) addSchema(oracleObj *domain.OracleObject) {
 	}
 }
 
-func (s *service) CreateOracleObjects(files []domain.File) []domain.OracleObject {
+func (s *service) CreateOracleObjects(rootDir, installDir string, files []domain.File) []domain.OracleObject {
 	result := make([]domain.OracleObject, 0, len(files))
 	for _, f := range files {
-		oracleFile := domain.OracleFile{
-			OracleDataType: domain.Data,
-			FileDetails:    f,
+		if s.fileSuitable(rootDir, installDir, f.Path) {
+			oracleFile := domain.OracleFile{
+				OracleDataType: domain.Data,
+				FileDetails:    f,
+			}
+			fmt.Println(f.Path)
+			obj := domain.OracleObject{File: oracleFile}
+			s.resolveAdditionalPathInfo(&obj)
+			s.addSchema(&obj)
+			result = append(result, obj)
 		}
-		obj := domain.OracleObject{File: oracleFile}
-		s.resolveAdditionalPathInfo(&obj)
-		s.addSchema(&obj)
-		result = append(result, obj)
 	}
 
 	return result
-}
-
-func (s *service) WalkAndCreateOracleObjects(rootDir string) ([]domain.OracleObject, error) {
-	files, err := s.fileWalker.Walk(rootDir, []string{".sql"})
-	if err != nil {
-		return nil, err
-	}
-	return s.CreateOracleObjects(files), nil
 }

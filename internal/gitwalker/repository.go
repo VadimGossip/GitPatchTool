@@ -141,22 +141,71 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 	return nil
 }
 
-func (r *repository) GetFilesDiff(head, till *object.Commit) ([]domain.File, error) {
-	files := make([]domain.File, 0)
-	commitIter, err := r.gitRepo.Log(&git.LogOptions{From: head.Hash, Since: &till.Committer.When})
+func (r *repository) commitSuitable(commit object.Commit) bool {
+	return !strings.HasPrefix(strings.ToLower(commit.Message), "merge")
+}
 
+func (r *repository) walkCommits(head, till *object.Commit) ([]*object.Commit, error) {
+	commitsReversed := make([]*object.Commit, 0)
+	commits := make([]*object.Commit, 0)
+	commitIter, err := r.gitRepo.Log(&git.LogOptions{From: head.Hash, Since: &till.Committer.When})
+	if err != nil {
+		return nil, err
+	}
 	if err := commitIter.ForEach(func(commit *object.Commit) error {
-		if len(commit.ParentHashes) < 2 {
-			err = r.addFileChanges(head, commit, &files)
-			if err != nil {
-				return err
-			}
-		}
+		commitsReversed = append(commitsReversed, commit)
 		head = commit
 		return nil
 	}); err != nil {
 		return nil, err
 	}
 
+	for i := len(commitsReversed) - 1; i >= 0; i-- {
+		if r.commitSuitable(*commitsReversed[i]) {
+			commits = append(commits, commitsReversed[i])
+		}
+	}
+	return commits, nil
+}
+
+func (r *repository) GetFilesDiff(head, till *object.Commit) ([]domain.File, error) {
+	files := make([]domain.File, 0)
+
+	commits, err := r.walkCommits(head, till)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, commit := range commits {
+		if err = r.addFileChanges(head, commit, &files); err != nil {
+			return nil, err
+		}
+		head = commit
+	}
 	return files, nil
 }
+
+//func (r *repository) GetFilesDiff(head, till *object.Commit) ([]domain.File, error) {
+//	files := make([]domain.File, 0)
+//	commitIter, err := r.gitRepo.Log(&git.LogOptions{From: head.Hash, Order: git.LogOrderCommitterTime, Since: &till.Committer.When})
+//
+//	_, err = r.WalkCommits(head, till)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	if err := commitIter.ForEach(func(commit *object.Commit) error {
+//		//fmt.Printf("commit hash %s, %s len(parent hashes) %d\n", commit.Hash.String(), commit.Message, len(commit.ParentHashes))
+//		if len(commit.ParentHashes) < 2 {
+//			if err = r.addFileChanges(head, commit, &files); err != nil {
+//				return err
+//			}
+//		}
+//		head = commit
+//		return nil
+//	}); err != nil {
+//		return nil, err
+//	}
+//
+//	return files, nil
+//}

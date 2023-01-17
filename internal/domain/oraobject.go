@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	OracleTablespaceType = iota
+	OracleTablespaceType = iota + 1
 	OracleDirectoryType
 	OracleDbLinkType
 	OracleUserType

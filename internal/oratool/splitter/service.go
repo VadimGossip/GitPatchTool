@@ -172,10 +172,12 @@ func (s *service) splitTableFile(oraFile domain.OracleObject) error {
 }
 
 func (s *service) SplitTableFiles() error {
-	oraObjects, err := s.extractor.WalkAndCreateOracleObjects(s.cfg.Path.RootDir)
+	files, err := s.fileWalker.Walk(s.cfg.Path.RootDir, []string{".sql"})
 	if err != nil {
 		return err
 	}
+
+	oraObjects := s.extractor.CreateOracleObjects(s.cfg.Path.RootDir, "", files)
 
 	filteredObj := make([]domain.OracleObject, 0)
 	for _, val := range oraObjects {
