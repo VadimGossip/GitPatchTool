@@ -49,7 +49,6 @@ func (s *service) leaveLastState(files []domain.File) []domain.File {
 			if rv.GitDetails.New {
 				rv.GitDetails.Action = domain.AddAction
 			}
-			fmt.Println(rv.FormShortInfoStr())
 			result = append(result, rv)
 		}
 	}

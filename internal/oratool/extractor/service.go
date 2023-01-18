@@ -117,7 +117,10 @@ func (s *service) CreateOracleObjects(rootDir, installDir string, files []domain
 			}
 			obj := domain.OracleObject{File: oracleFile}
 			s.resolveAdditionalPathInfo(&obj)
-			s.addSchema(&obj)
+			if f.GitDetails.Action != domain.DeleteAction {
+				s.addSchema(&obj)
+			}
+
 			result = append(result, obj)
 		}
 	}
