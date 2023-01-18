@@ -1,5 +1,9 @@
 package domain
 
+import (
+	"fmt"
+)
+
 const (
 	AddAction    int = 1
 	DeleteAction int = 2
@@ -43,6 +47,11 @@ type File struct {
 	Path       string
 	FileLines  []string
 	GitDetails GitFileDetails
+}
+
+func (f File) FormShortInfoStr() string {
+	return fmt.Sprintf("Name %s Path %s  InitialName %s InitialPath %s Comment %s Action %s New %t",
+		f.Name, f.Path, f.GitDetails.InitialName, f.GitDetails.InitialPath, ActionNameDict[f.GitDetails.Action], f.GitDetails.Comment, f.GitDetails.New)
 }
 
 type OracleFile struct {

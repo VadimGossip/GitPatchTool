@@ -24,16 +24,23 @@ func NewService(repository Repository) *service {
 //добавить параметр New
 func (s *service) leaveLastState(files []domain.File) []domain.File {
 	resultMap := make(map[string]domain.File)
-	for _, val := range files {
-		if rv, ok := resultMap[val.Path]; ok {
-			val.GitDetails.New = rv.GitDetails.New
+	for _, file := range files {
+		if rv, ok := resultMap[file.Path]; ok {
+			file.GitDetails.New = rv.GitDetails.New
 			if rv.GitDetails.Action == domain.RenameAction {
-				val.GitDetails.InitialName = rv.GitDetails.InitialName
-				val.GitDetails.InitialPath = rv.GitDetails.InitialPath
-				delete(resultMap, rv.GitDetails.InitialPath)
+				file.GitDetails.InitialName = rv.GitDetails.InitialName
+				file.GitDetails.InitialPath = rv.GitDetails.InitialPath
+				if file.GitDetails.Action != domain.DeleteAction {
+					file.GitDetails.Action = domain.RenameAction
+				}
 			}
+		} else if file.GitDetails.Action == domain.RenameAction {
+			if rv, ok := resultMap[file.GitDetails.InitialPath]; ok {
+				file.GitDetails.New = rv.GitDetails.New
+			}
+			delete(resultMap, file.GitDetails.InitialPath)
 		}
-		resultMap[val.Path] = val
+		resultMap[file.Path] = file
 	}
 
 	result := make([]domain.File, 0, len(resultMap))
@@ -42,6 +49,7 @@ func (s *service) leaveLastState(files []domain.File) []domain.File {
 			if rv.GitDetails.New {
 				rv.GitDetails.Action = domain.AddAction
 			}
+			fmt.Println(rv.FormShortInfoStr())
 			result = append(result, rv)
 		}
 	}

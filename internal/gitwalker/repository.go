@@ -1,7 +1,6 @@
 package gitwalker
 
 import (
-	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -100,7 +99,7 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 						GitDetails: domain.GitFileDetails{
 							InitialName: fromFileName,
 							InitialPath: strings.Replace(r.rootDir+fromFile.Path(), "/", string(os.PathSeparator), -1),
-							Comment:     currentCommit.Message,
+							Comment:     strings.Split(currentCommit.Message, "\n")[0],
 							Action:      domain.RenameAction,
 						},
 					}
@@ -109,7 +108,7 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 						Name: toFileName,
 						Path: strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
 						GitDetails: domain.GitFileDetails{
-							Comment: currentCommit.Message,
+							Comment: strings.Split(currentCommit.Message, "\n")[0],
 							Action:  domain.ModifyAction,
 						},
 					}
@@ -120,7 +119,7 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 					Name: fromFileName,
 					Path: strings.Replace(r.rootDir+fromFile.Path(), "/", string(os.PathSeparator), -1),
 					GitDetails: domain.GitFileDetails{
-						Comment: currentCommit.Message,
+						Comment: strings.Split(currentCommit.Message, "\n")[0],
 						Action:  domain.DeleteAction,
 					},
 				}
@@ -130,7 +129,7 @@ func (r *repository) addFileChanges(nextCommit, currentCommit *object.Commit, fi
 					Name: toFileName,
 					Path: strings.Replace(r.rootDir+toFile.Path(), "/", string(os.PathSeparator), -1),
 					GitDetails: domain.GitFileDetails{
-						Comment: currentCommit.Message,
+						Comment: strings.Split(currentCommit.Message, "\n")[0],
 						Action:  domain.AddAction,
 						New:     true,
 					},
@@ -166,7 +165,5 @@ func (r *repository) GetFilesDiff(headCommit, fromCommit *object.Commit) ([]doma
 	for i := len(files) - 1; i >= 0; i-- {
 		orderedFiles = append(orderedFiles, files[i])
 	}
-
-	fmt.Println(orderedFiles)
 	return orderedFiles, nil
 }
