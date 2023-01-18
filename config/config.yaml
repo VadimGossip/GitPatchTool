@@ -3,4 +3,6 @@ work_options:
   commitId: db710d6f6529db47d694af6622d5432029cdcc84 #Id of commit after that we look for changed objects including
   path:
     installDir: e:\WorkSpace\TCS_Oracle\install\2023ww03-04\ # directory where we will put install files
-    rootDir: e:\Workspace\TCS_oracle\ # directory from where we get oracle objects
+    rootDir: e:\WorkSpace\TCS_Oracle\ # directory from where we get oracle objects
+      
+      

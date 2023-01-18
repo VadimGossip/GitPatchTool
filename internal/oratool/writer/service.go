@@ -185,7 +185,15 @@ func (s *service) formObjectTypeHeader(oracleObjectType int) string {
 	return fmt.Sprintf("prompt %s", domain.OracleObjectTypeDirDict[oracleObjectType])
 }
 
-func (s *service) formObjectLines(rootDir string, obj domain.OracleObject) []string {
+func (s *service) formObjectLines(rootDir, installDir string, obj domain.OracleObject) []string {
+	if obj.ObjectType == domain.OracleScriptsBeforeType ||
+		obj.ObjectType == domain.OracleScriptsAfterType ||
+		obj.ObjectType == domain.OracleScriptsMigrationType {
+		return []string{
+			fmt.Sprintf("prompt %s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, installDir, "", -1), string(os.PathSeparator), "/", -1)),
+			fmt.Sprintf("%s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, installDir, "@     ./", -1), string(os.PathSeparator), "/", -1)),
+		}
+	}
 	return []string{
 		fmt.Sprintf("prompt %s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, rootDir, "", -1), string(os.PathSeparator), "/", -1)),
 		fmt.Sprintf("%s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, rootDir, "@ ../../", -1), string(os.PathSeparator), "/", -1)),
@@ -258,7 +266,13 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 
 	for _, obj := range oracleObjects {
 		for _, serverSchema := range obj.ServerSchemaList {
-			installFileName := domain.ServerSchemaInstallFilenameDict[serverSchema]
+			var installFileName string
+			if obj.ObjectType != domain.OracleScriptsMigrationType {
+				installFileName = domain.ServerSchemaInstallFilenameDict[serverSchema]
+			} else {
+				installFileName = domain.ServerSchemaMigrationFilenameDict[serverSchema]
+			}
+
 			schemaStrItem := cases.Title(language.English, cases.Compact).String(domain.ServerSchemaSchemaStrItemDict[serverSchema])
 			if installFileName != "" {
 				objInstall[oiKey{filename: installFileName, schemaStrItem: schemaStrItem}] = append(objInstall[oiKey{filename: installFileName, schemaStrItem: schemaStrItem}], obj)
@@ -297,7 +311,7 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 				installFileLines[key.filename] = append(installFileLines[key.filename], curObjectTypeH)
 			}
 
-			installFileLines[key.filename] = append(installFileLines[key.filename], s.formObjectLines(rootDir, objI[idx])...)
+			installFileLines[key.filename] = append(installFileLines[key.filename], s.formObjectLines(rootDir, installDir, objI[idx])...)
 		}
 		installFileLines[key.filename] = append(installFileLines[key.filename], "")
 		installFileLines[key.filename] = append(installFileLines[key.filename], footer)

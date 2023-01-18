@@ -64,10 +64,9 @@ func (s *service) parseSchema(schemaStr string) map[domain.ServerSchema]struct{}
 func (s *service) fileSuitable(rootDir, installDir, path string) bool {
 	parts := strings.Split(strings.Replace(path, rootDir, "", -1), string(os.PathSeparator))
 	notInInstall := strings.ToLower(parts[0]) == "install" && (!strings.HasPrefix(path, installDir))
-	inInstallButNotScript := len(parts) >= 2 && strings.HasPrefix(path, installDir) && (domain.DirOracleObjectTypeDict[parts[len(parts)-2]] != domain.OracleScriptsMigrationType ||
-		domain.DirOracleObjectTypeDict[parts[len(parts)-2]] != domain.OracleScriptsBeforeType ||
-		domain.DirOracleObjectTypeDict[parts[len(parts)-2]] != domain.OracleScriptsAfterType)
-
+	inInstallButNotScript := len(parts) >= 2 && strings.HasPrefix(path, installDir) && !(domain.DirOracleObjectTypeDict[parts[len(parts)-2]] == domain.OracleScriptsMigrationType ||
+		domain.DirOracleObjectTypeDict[parts[len(parts)-2]] == domain.OracleScriptsBeforeType ||
+		domain.DirOracleObjectTypeDict[parts[len(parts)-2]] == domain.OracleScriptsAfterType)
 	return !(notInInstall || inInstallButNotScript)
 }
 
@@ -120,7 +119,6 @@ func (s *service) CreateOracleObjects(rootDir, installDir string, files []domain
 			if f.GitDetails.Action != domain.DeleteAction {
 				s.addSchema(&obj)
 			}
-
 			result = append(result, obj)
 		}
 	}
