@@ -185,8 +185,8 @@ var DirOracleObjectTypeDict = map[string]int{
 	"functions":         OracleFunctionType,
 	"vtbs_clogs":        OracleVClogType,
 	"tables.fk":         OracleTableFKType,
-	"scripts_before:":   OracleScriptsBeforeType,
-	"scripts_after:":    OracleScriptsAfterType,
+	"scripts_before":    OracleScriptsBeforeType,
+	"scripts_after":     OracleScriptsAfterType,
 	"scripts_migration": OracleScriptsMigrationType,
 }
 

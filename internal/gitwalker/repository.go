@@ -148,7 +148,7 @@ func (r *repository) commitSuitable(commit object.Commit) bool {
 func (r *repository) GetFilesDiff(headCommit, fromCommit *object.Commit) ([]domain.File, error) {
 	files := make([]domain.File, 0)
 	orderedFiles := make([]domain.File, 0)
-	commitIter, err := r.gitRepo.Log(&git.LogOptions{From: headCommit.Hash, Order: git.LogOrderCommitterTime, Since: &fromCommit.Committer.When})
+	commitIter, err := r.gitRepo.Log(&git.LogOptions{From: headCommit.Hash, Since: &fromCommit.Committer.When})
 
 	if err := commitIter.ForEach(func(commit *object.Commit) error {
 		if r.commitSuitable(*headCommit) && headCommit.Hash != commit.Hash {

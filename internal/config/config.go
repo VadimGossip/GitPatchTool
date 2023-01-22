@@ -36,8 +36,9 @@ func checkAndFixPaths(cfg *domain.Config) error {
 		cfg.Path.RootDir = cfg.Path.RootDir + string(os.PathSeparator)
 	}
 	if !strings.HasSuffix(cfg.Path.InstallDir, string(os.PathSeparator)) {
-		cfg.Path.RootDir = cfg.Path.InstallDir + string(os.PathSeparator)
+		cfg.Path.InstallDir = cfg.Path.InstallDir + string(os.PathSeparator)
 	}
+
 	if cfg.Mode == "patch" {
 		if !strings.HasPrefix(cfg.Path.InstallDir, cfg.Path.RootDir) {
 			return errors.New(fmt.Sprintf("install dir %s not in git dir %s", cfg.Path.InstallDir, cfg.Path.RootDir))
