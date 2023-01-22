@@ -211,8 +211,8 @@ var OracleObjectTypeDirDict = map[int]string{
 	OracleFunctionType:         "functions",
 	OracleVClogType:            "vtbs_clogs",
 	OracleTableFKType:          "tables.fk",
-	OracleScriptsBeforeType:    "scripts_before:",
-	OracleScriptsAfterType:     "scripts_after:",
+	OracleScriptsBeforeType:    "scripts_before",
+	OracleScriptsAfterType:     "scripts_after",
 	OracleScriptsMigrationType: "scripts_migration",
 }
 

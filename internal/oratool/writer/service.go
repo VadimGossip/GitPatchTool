@@ -97,6 +97,14 @@ var manualOperations = map[typeAction]struct{}{
 	{domain.OracleScriptsMigrationType, domain.RenameAction}: {},
 }
 
+var splitActions = map[typeAction][]int{
+	{domain.OracleMViewType, domain.ModifyAction}: {domain.DeleteAction, domain.AddAction},
+}
+
+func (s *service) formDropMViewLine(obj domain.OracleObject) string {
+	return fmt.Sprintf("drop materialized view %s;", obj.File.FileDetails.Name)
+}
+
 func (s *service) getPackageWeight(oracleObject domain.OracleObject) int {
 	if strings.HasSuffix(oracleObject.ObjectName, "read") {
 		return 0
@@ -133,16 +141,27 @@ func (s *service) sortOracleObjects(oracleObjects []domain.OracleObject) {
 		}
 
 		if oracleObjects[i].ObjectType == oracleObjects[j].ObjectType && oracleObjects[i].ModuleName == oracleObjects[j].ModuleName &&
+			oracleObjects[i].File.FileDetails.GitDetails.Action == oracleObjects[j].File.FileDetails.GitDetails.Action &&
 			oracleObjects[i].ObjectType == domain.OraclePackageType {
 			return s.getPackageWeight(oracleObjects[i]) < s.getPackageWeight(oracleObjects[j])
 		}
 
 		if oracleObjects[i].ObjectType == oracleObjects[j].ObjectType && oracleObjects[i].ModuleName == oracleObjects[j].ModuleName &&
+			oracleObjects[i].File.FileDetails.GitDetails.Action == oracleObjects[j].File.FileDetails.GitDetails.Action &&
 			oracleObjects[i].ObjectType == domain.OracleTypeType {
-			return s.getPackageWeight(oracleObjects[i]) < s.getPackageWeight(oracleObjects[j])
+			return s.getTypeWeight(oracleObjects[i]) < s.getTypeWeight(oracleObjects[j])
 		}
 
-		return oracleObjects[i].ObjectType < oracleObjects[j].ObjectType
+		ki, kj := 1, 1
+		if oracleObjects[i].File.FileDetails.GitDetails.Action == domain.DeleteAction {
+			ki = -1
+		}
+
+		if oracleObjects[j].File.FileDetails.GitDetails.Action == domain.DeleteAction {
+			kj = -1
+		}
+
+		return oracleObjects[i].ObjectType*ki < oracleObjects[j].ObjectType*kj
 	})
 }
 
@@ -182,8 +201,12 @@ func (s *service) formModuleHeader(obj domain.OracleObject) string {
 	}
 }
 
-func (s *service) formObjectTypeHeader(oracleObjectType int) string {
-	return fmt.Sprintf("prompt %s", domain.OracleObjectTypeDirDict[oracleObjectType])
+func (s *service) formObjectTypeHeader(obj domain.OracleObject) string {
+	promptStr := "prompt"
+	if obj.File.FileDetails.GitDetails.Action == domain.DeleteAction {
+		promptStr += " drop"
+	}
+	return fmt.Sprintf("%s %s", promptStr, domain.OracleObjectTypeDirDict[obj.ObjectType])
 }
 
 func (s *service) formObjectLines(rootDir, installDir string, obj domain.OracleObject) []string {
@@ -192,12 +215,17 @@ func (s *service) formObjectLines(rootDir, installDir string, obj domain.OracleO
 		obj.ObjectType == domain.OracleScriptsMigrationType {
 		return []string{
 			fmt.Sprintf("prompt %s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, installDir, "", -1), string(os.PathSeparator), "/", -1)),
-			fmt.Sprintf("%s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, installDir, "@     ./", -1), string(os.PathSeparator), "/", -1)),
+			fmt.Sprintf(strings.Replace(strings.Replace(obj.File.FileDetails.Path, installDir, "@     ./", -1), string(os.PathSeparator), "/", -1)),
+		}
+	} else if obj.ObjectType == domain.OracleMViewType && obj.File.FileDetails.GitDetails.Action == domain.DeleteAction {
+		return []string{
+			fmt.Sprintf("prompt %s", strings.Replace(s.formDropMViewLine(obj), ";", "", -1)),
+			fmt.Sprintf(s.formDropMViewLine(obj)),
 		}
 	}
 	return []string{
 		fmt.Sprintf("prompt %s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, rootDir, "", -1), string(os.PathSeparator), "/", -1)),
-		fmt.Sprintf("%s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, rootDir, "@ ../../", -1), string(os.PathSeparator), "/", -1)),
+		fmt.Sprintf(strings.Replace(strings.Replace(obj.File.FileDetails.Path, rootDir, "@ ../../", -1), string(os.PathSeparator), "/", -1)),
 	}
 }
 func (s *service) formErrorFile(installDir string, oracleObjects []domain.OracleObject) domain.OracleFile {
@@ -296,10 +324,10 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 		installFileLines[key.filename] = append(installFileLines[key.filename], commitMsg)
 		for idx := range objI {
 			curModuleH = s.formModuleHeader(objI[idx])
-			curObjectTypeH = s.formObjectTypeHeader(objI[idx].ObjectType)
+			curObjectTypeH = s.formObjectTypeHeader(objI[idx])
 			if idx > 0 {
 				prevModuleH = s.formModuleHeader(objI[idx-1])
-				prevObjectTypeH = s.formObjectTypeHeader(objI[idx-1].ObjectType)
+				prevObjectTypeH = s.formObjectTypeHeader(objI[idx-1])
 			}
 
 			if curModuleH != prevModuleH {
@@ -340,6 +368,19 @@ func (s *service) removeSessionFiles(installDir string) error {
 	return nil
 }
 
+func (s *service) splitObjectAction(obj domain.OracleObject) []domain.OracleObject {
+	result := make([]domain.OracleObject, 0)
+	if val, ok := splitActions[typeAction{obj.ObjectType, obj.File.FileDetails.GitDetails.Action}]; ok {
+		for _, newAction := range val {
+			obj.File.FileDetails.GitDetails.Action = newAction
+			result = append(result, obj)
+		}
+	} else {
+		result = append(result, obj)
+	}
+	return result
+}
+
 func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, oracleObjects []domain.OracleObject) error {
 	objErrors := make([]domain.OracleObject, 0)
 	objWarnings := make([]domain.OracleObject, 0)
@@ -355,13 +396,17 @@ func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, orac
 				objErrors = append(objErrors, obj)
 			} else {
 				if _, ok := manualOperations[typeAction{obj.ObjectType, obj.File.FileDetails.GitDetails.Action}]; !ok {
-					objInstall = append(objInstall, obj)
+					objInstall = append(objInstall, s.splitObjectAction(obj)...)
 				} else {
 					objWarnings = append(objWarnings, obj)
 				}
 			}
 		}
 	}
+
+	//for _, obj := range objInstall {
+	//	fmt.Printf("obj name %s obj action %d\n", obj.ObjectName, obj.File.FileDetails.GitDetails.Action)
+	//}
 
 	if len(objErrors) > 0 {
 		errFile := s.formErrorFile(installDir, objErrors)
