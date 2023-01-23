@@ -105,63 +105,69 @@ func (s *service) formDropMViewLine(obj domain.OracleObject) string {
 	return fmt.Sprintf("drop materialized view %s;", obj.File.FileDetails.Name)
 }
 
+func (s *service) actionWeightMultiplier(action int) int {
+	if action == domain.DeleteAction {
+		return -1
+	}
+	return 1
+}
+
 func (s *service) getPackageWeight(oracleObject domain.OracleObject) int {
 	if strings.HasSuffix(oracleObject.ObjectName, "read") {
-		return 0
+		return 1 * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
 	}
 	if strings.HasSuffix(oracleObject.ObjectName, "digests") {
-		return 1
+		return 2 * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
 	}
 	if strings.HasSuffix(oracleObject.ObjectName, "utils") {
-		return 2
+		return 3 * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
 	}
 	if strings.HasSuffix(oracleObject.ObjectName, "ri") {
-		return 3
+		return 4 * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
 	}
 	if strings.HasSuffix(oracleObject.ObjectName, "ui") {
-		return 4
+		return 5 * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
 	}
-	return 5
+	return 6 * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
 }
 func (s *service) getTypeWeight(oracleObject domain.OracleObject) int {
-	return len(oracleObject.ObjectName)
+	return len(oracleObject.ObjectName) * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
+}
+
+func (s *service) getObjectWeight(oracleObject domain.OracleObject) int {
+	return oracleObject.ObjectType * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
 }
 
 func (s *service) sortOracleObjects(oracleObjects []domain.OracleObject) {
 	sort.SliceStable(oracleObjects, func(i, j int) bool {
-		if (oracleObjects[i].ObjectType == domain.OracleScriptsBeforeType && oracleObjects[j].ObjectType != domain.OracleScriptsBeforeType) ||
-			(oracleObjects[i].ObjectType != domain.OracleScriptsBeforeType && oracleObjects[j].ObjectType == domain.OracleScriptsBeforeType) ||
-			(oracleObjects[i].ObjectType != domain.OracleScriptsMigrationType && oracleObjects[j].ObjectType == domain.OracleScriptsMigrationType) {
-			return true
+		iIsScript := oracleObjects[i].ObjectType == domain.OracleScriptsBeforeType || oracleObjects[i].ObjectType == domain.OracleScriptsAfterType || oracleObjects[i].ObjectType == domain.OracleScriptsMigrationType
+		jIsScript := oracleObjects[j].ObjectType == domain.OracleScriptsBeforeType || oracleObjects[j].ObjectType == domain.OracleScriptsAfterType || oracleObjects[j].ObjectType == domain.OracleScriptsMigrationType
+
+		if iIsScript != jIsScript {
+			return (oracleObjects[i].ObjectType == domain.OracleScriptsBeforeType && oracleObjects[j].ObjectType != domain.OracleScriptsBeforeType) ||
+				(oracleObjects[i].ObjectType != domain.OracleScriptsAfterType && oracleObjects[j].ObjectType == domain.OracleScriptsAfterType) ||
+				(oracleObjects[i].ObjectType != domain.OracleScriptsMigrationType && oracleObjects[j].ObjectType == domain.OracleScriptsMigrationType)
 		}
 
-		if oracleObjects[i].EpicModuleName < oracleObjects[j].EpicModuleName ||
-			oracleObjects[i].EpicModuleName == oracleObjects[j].EpicModuleName && oracleObjects[i].ModuleName < oracleObjects[j].ModuleName {
-			return true
+		if oracleObjects[i].EpicModuleName != oracleObjects[j].EpicModuleName {
+			return oracleObjects[i].EpicModuleName < oracleObjects[j].EpicModuleName
+		}
+
+		if oracleObjects[i].EpicModuleName == oracleObjects[j].EpicModuleName && oracleObjects[i].ModuleName != oracleObjects[j].ModuleName {
+			return oracleObjects[i].ModuleName < oracleObjects[j].ModuleName
 		}
 
 		if oracleObjects[i].ObjectType == oracleObjects[j].ObjectType && oracleObjects[i].ModuleName == oracleObjects[j].ModuleName &&
-			oracleObjects[i].File.FileDetails.GitDetails.Action == oracleObjects[j].File.FileDetails.GitDetails.Action &&
 			oracleObjects[i].ObjectType == domain.OraclePackageType {
 			return s.getPackageWeight(oracleObjects[i]) < s.getPackageWeight(oracleObjects[j])
 		}
 
 		if oracleObjects[i].ObjectType == oracleObjects[j].ObjectType && oracleObjects[i].ModuleName == oracleObjects[j].ModuleName &&
-			oracleObjects[i].File.FileDetails.GitDetails.Action == oracleObjects[j].File.FileDetails.GitDetails.Action &&
 			oracleObjects[i].ObjectType == domain.OracleTypeType {
 			return s.getTypeWeight(oracleObjects[i]) < s.getTypeWeight(oracleObjects[j])
 		}
 
-		ki, kj := 1, 1
-		if oracleObjects[i].File.FileDetails.GitDetails.Action == domain.DeleteAction {
-			ki = -1
-		}
-
-		if oracleObjects[j].File.FileDetails.GitDetails.Action == domain.DeleteAction {
-			kj = -1
-		}
-
-		return oracleObjects[i].ObjectType*ki < oracleObjects[j].ObjectType*kj
+		return oracleObjects[i].ObjectType < oracleObjects[j].ObjectType
 	})
 }
 
@@ -311,8 +317,18 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 
 	var curModuleH, prevModuleH, curObjectTypeH, prevObjectTypeH string
 	for key, objI := range objInstall {
+		fmt.Println("Unsorted Order")
+		for _, o := range objI {
+
+			fmt.Printf("Path %s Type %d Action %d\n", o.File.FileDetails.Path, o.ObjectType, o.File.FileDetails.GitDetails.Action)
+		}
 
 		s.sortOracleObjects(objI)
+		fmt.Println("Sorted Order")
+		for _, o := range objI {
+
+			fmt.Printf("Path %s Type %d Action %d\n", o.File.FileDetails.Path, o.ObjectType, o.File.FileDetails.GitDetails.Action)
+		}
 		addToFile := s.file.CheckFileExists(installDir + key.filename)
 		footer := s.createInstallFileFooter()
 		if addToFile {
