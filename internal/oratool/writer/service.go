@@ -41,7 +41,6 @@ var manualOperations = map[typeAction]struct{}{
 	{domain.OracleRowType, domain.ModifyAction}:              {},
 	{domain.OracleRoleType, domain.ModifyAction}:             {},
 	{domain.OracleTableType, domain.ModifyAction}:            {},
-	{domain.OracleTableFKType, domain.ModifyAction}:          {},
 	{domain.OracleScriptsBeforeType, domain.ModifyAction}:    {},
 	{domain.OracleScriptsAfterType, domain.ModifyAction}:     {},
 	{domain.OracleScriptsMigrationType, domain.ModifyAction}: {},
@@ -56,7 +55,6 @@ var manualOperations = map[typeAction]struct{}{
 	{domain.OracleSequencesType, domain.DeleteAction}:        {},
 	{domain.OracleTypeType, domain.DeleteAction}:             {},
 	{domain.OracleTableType, domain.DeleteAction}:            {},
-	{domain.OracleTableFKType, domain.DeleteAction}:          {},
 	{domain.OracleMLogType, domain.DeleteAction}:             {},
 	{domain.OracleMViewType, domain.DeleteAction}:            {},
 	{domain.OraclePackageType, domain.DeleteAction}:          {},
@@ -98,11 +96,17 @@ var manualOperations = map[typeAction]struct{}{
 }
 
 var splitActions = map[typeAction][]int{
-	{domain.OracleMViewType, domain.ModifyAction}: {domain.DeleteAction, domain.AddAction},
+	{domain.OracleMViewType, domain.ModifyAction}:   {domain.DeleteAction, domain.AddAction},
+	{domain.OracleTableFKType, domain.ModifyAction}: {domain.DeleteAction, domain.AddAction},
 }
 
 func (s *service) formDropMViewLine(obj domain.OracleObject) string {
 	return fmt.Sprintf("drop materialized view %s;", obj.File.FileDetails.Name)
+}
+
+func (s *service) formDropTableFKLine(obj domain.OracleObject) string {
+	parts := strings.Split(obj.ObjectName, ".")
+	return fmt.Sprintf("alter table %s drop constraint %s;", parts[0], parts[1])
 }
 
 func (s *service) actionWeightMultiplier(action int) int {
@@ -130,8 +134,9 @@ func (s *service) getPackageWeight(oracleObject domain.OracleObject) int {
 	}
 	return 6 * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
 }
-func (s *service) getTypeWeight(oracleObject domain.OracleObject) int {
-	return len(oracleObject.ObjectName) * s.actionWeightMultiplier(oracleObject.File.FileDetails.GitDetails.Action)
+
+func (s *service) getNameBasedWeight(name string, action int) int {
+	return len(name) * s.actionWeightMultiplier(action)
 }
 
 func (s *service) getObjectWeight(oracleObject domain.OracleObject) int {
@@ -158,13 +163,24 @@ func (s *service) sortOracleObjects(oracleObjects []domain.OracleObject) {
 		}
 
 		if oracleObjects[i].ObjectType == oracleObjects[j].ObjectType && oracleObjects[i].ModuleName == oracleObjects[j].ModuleName &&
+			oracleObjects[i].ObjectType == domain.OracleTableFKType {
+			partsI := strings.Split(oracleObjects[i].ObjectName, ".")
+			partsJ := strings.Split(oracleObjects[j].ObjectName, ".")
+			if partsI[0] == partsJ[0] {
+				return s.getNameBasedWeight(partsI[1], oracleObjects[i].File.FileDetails.GitDetails.Action) < s.getNameBasedWeight(partsJ[1], oracleObjects[j].File.FileDetails.GitDetails.Action)
+			} else {
+				return s.getNameBasedWeight(partsI[0], oracleObjects[i].File.FileDetails.GitDetails.Action) < s.getNameBasedWeight(partsJ[0], oracleObjects[j].File.FileDetails.GitDetails.Action)
+			}
+		}
+
+		if oracleObjects[i].ObjectType == oracleObjects[j].ObjectType && oracleObjects[i].ModuleName == oracleObjects[j].ModuleName &&
 			oracleObjects[i].ObjectType == domain.OraclePackageType {
 			return s.getPackageWeight(oracleObjects[i]) < s.getPackageWeight(oracleObjects[j])
 		}
 
 		if oracleObjects[i].ObjectType == oracleObjects[j].ObjectType && oracleObjects[i].ModuleName == oracleObjects[j].ModuleName &&
 			oracleObjects[i].ObjectType == domain.OracleTypeType {
-			return s.getTypeWeight(oracleObjects[i]) < s.getTypeWeight(oracleObjects[j])
+			return s.getNameBasedWeight(oracleObjects[i].ObjectName, oracleObjects[i].File.FileDetails.GitDetails.Action) < s.getNameBasedWeight(oracleObjects[j].ObjectName, oracleObjects[j].File.FileDetails.GitDetails.Action)
 		}
 
 		return oracleObjects[i].ObjectType < oracleObjects[j].ObjectType
@@ -220,17 +236,22 @@ func (s *service) formObjectLines(rootDir, installDir string, obj domain.OracleO
 		obj.ObjectType == domain.OracleScriptsAfterType ||
 		obj.ObjectType == domain.OracleScriptsMigrationType {
 		return []string{
-			fmt.Sprintf("prompt %s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, installDir, "", -1), string(os.PathSeparator), "/", -1)),
+			fmt.Sprintf("prompt  %s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, installDir, "", -1), string(os.PathSeparator), "/", -1)),
 			fmt.Sprintf(strings.Replace(strings.Replace(obj.File.FileDetails.Path, installDir, "@     ./", -1), string(os.PathSeparator), "/", -1)),
 		}
 	} else if obj.ObjectType == domain.OracleMViewType && obj.File.FileDetails.GitDetails.Action == domain.DeleteAction {
 		return []string{
-			fmt.Sprintf("prompt %s", strings.Replace(s.formDropMViewLine(obj), ";", "", -1)),
+			fmt.Sprintf("prompt  %s", strings.Replace(s.formDropMViewLine(obj), ";", "", -1)),
 			fmt.Sprintf(s.formDropMViewLine(obj)),
+		}
+	} else if obj.ObjectType == domain.OracleTableFKType && obj.File.FileDetails.GitDetails.Action == domain.DeleteAction {
+		return []string{
+			fmt.Sprintf("prompt  %s", strings.Replace(s.formDropTableFKLine(obj), ";", "", -1)),
+			fmt.Sprintf(s.formDropTableFKLine(obj)),
 		}
 	}
 	return []string{
-		fmt.Sprintf("prompt %s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, rootDir, "", -1), string(os.PathSeparator), "/", -1)),
+		fmt.Sprintf("prompt  %s", strings.Replace(strings.Replace(obj.File.FileDetails.Path, rootDir, "", -1), string(os.PathSeparator), "/", -1)),
 		fmt.Sprintf(strings.Replace(strings.Replace(obj.File.FileDetails.Path, rootDir, "@ ../../", -1), string(os.PathSeparator), "/", -1)),
 	}
 }
@@ -317,18 +338,7 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 
 	var curModuleH, prevModuleH, curObjectTypeH, prevObjectTypeH string
 	for key, objI := range objInstall {
-		fmt.Println("Unsorted Order")
-		for _, o := range objI {
-
-			fmt.Printf("Path %s Type %d Action %d\n", o.File.FileDetails.Path, o.ObjectType, o.File.FileDetails.GitDetails.Action)
-		}
-
 		s.sortOracleObjects(objI)
-		fmt.Println("Sorted Order")
-		for _, o := range objI {
-
-			fmt.Printf("Path %s Type %d Action %d\n", o.File.FileDetails.Path, o.ObjectType, o.File.FileDetails.GitDetails.Action)
-		}
 		addToFile := s.file.CheckFileExists(installDir + key.filename)
 		footer := s.createInstallFileFooter()
 		if addToFile {
@@ -420,9 +430,9 @@ func (s *service) CreateInstallFiles(rootDir, installDir, commitMsg string, orac
 		}
 	}
 
-	//for _, obj := range objInstall {
-	//	fmt.Printf("obj name %s obj action %d\n", obj.ObjectName, obj.File.FileDetails.GitDetails.Action)
-	//}
+	if err := s.file.CreateDir(installDir); err != nil {
+		return err
+	}
 
 	if len(objErrors) > 0 {
 		errFile := s.formErrorFile(installDir, objErrors)

@@ -26,11 +26,11 @@ const (
 	VtbsAdeskHpffmInstallName     string = "30_VTBS_ADESK_HPFFM.sql"
 	VtbsXAlarisHpffmInstallName   string = "40_VTBS_X_ALARIS_HPFFM.sql"
 	VtbsBiHpffmInstallName        string = "50_VTBS_BI_HPFFM.sql"
-	VtbsCoreMigrationName         string = "90_VTBS_CORE.sql"
-	VtbsHpffmMigrationName        string = "91_VTBS_HPFFM.sql"
-	VtbsAdeskHpffmMigrationName   string = "92_VTBS_ADESK_HPFFM.sql"
-	VtbsXAlarisHpffmMigrationName string = "93_VTBS_X_ALARIS_HPFFM.sql"
-	VtbsBiHpffmMigrationName      string = "94_VTBS_BI_HPFFM.sql"
+	VtbsCoreMigrationName         string = "90_VTBS_CORE_MIGRATION.sql"
+	VtbsHpffmMigrationName        string = "91_VTBS_HPFFM_MIGRATION.sql"
+	VtbsAdeskHpffmMigrationName   string = "92_VTBS_ADESK_HPFFM_MIGRATION.sql"
+	VtbsXAlarisHpffmMigrationName string = "93_VTBS_X_ALARIS_HPFFM_MIGRATION.sql"
+	VtbsBiHpffmMigrationName      string = "94_VTBS_BI_HPFFM_MIGRATION.sql"
 )
 
 // GitFileDetails add and handle initialAction to handle add -> modify -> delete sequence

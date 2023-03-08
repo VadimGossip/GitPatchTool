@@ -2,6 +2,8 @@ package file
 
 import (
 	"bufio"
+	"errors"
+	"fmt"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"os"
 	"path/filepath"
@@ -13,6 +15,7 @@ type Service interface {
 	SearchStrInFile(starts, path string) (string, error)
 	LostFiles(allList, searchList []domain.File) []domain.File
 	Walk(path string, extFilter []string) ([]domain.File, error)
+	CreateDir(dirPath string) error
 	CreateFile(path string, lines []string) error
 	DeleteFile(path string) error
 	ReadFileLines(path string) ([]string, error)
@@ -98,9 +101,19 @@ func (s *service) Walk(path string, extFilter []string) ([]domain.File, error) {
 	return result, nil
 }
 
+func (s *service) CreateDir(dirPath string) error {
+	if _, err := os.Stat(dirPath); errors.Is(err, os.ErrNotExist) {
+		if err = os.Mkdir(dirPath, os.ModePerm); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *service) CreateFile(path string, lines []string) error {
 	f, err := os.Create(path)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 	defer f.Close()
