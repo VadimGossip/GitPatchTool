@@ -9,7 +9,6 @@ const (
 	OracleDirectoryType
 	OracleDbLinkType
 	OracleUserType
-	OracleSynonymType
 	OracleContextType
 	OracleSequencesType
 	OracleTypeType
@@ -25,6 +24,7 @@ const (
 	OracleRoleType
 	OracleFunctionType
 	OracleVClogType
+	OracleSynonymType
 	OracleScriptsBeforeType
 	OracleScriptsAfterType
 	OracleScriptsMigrationType

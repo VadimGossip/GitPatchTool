@@ -101,7 +101,7 @@ var splitActions = map[typeAction][]int{
 }
 
 func (s *service) formDropMViewLine(obj domain.OracleObject) string {
-	return fmt.Sprintf("drop materialized view %s;", obj.File.FileDetails.Name)
+	return fmt.Sprintf("drop materialized view %s;", obj.ObjectName)
 }
 
 func (s *service) formDropTableFKLine(obj domain.OracleObject) string {
