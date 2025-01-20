@@ -1,11 +1,13 @@
 package extractor
 
 import (
-	"github.com/VadimGossip/gitPatchTool/internal/domain"
-	"github.com/VadimGossip/gitPatchTool/internal/file"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/VadimGossip/gitPatchTool/internal/domain"
+	"github.com/VadimGossip/gitPatchTool/internal/file"
+	"github.com/VadimGossip/gitPatchTool/internal/oratool/schema"
 )
 
 type Service interface {
@@ -13,13 +15,17 @@ type Service interface {
 }
 
 type service struct {
-	fileWalker file.Service
+	file   file.Service
+	schema schema.Service
 }
 
 var _ Service = (*service)(nil)
 
-func NewService(fileWalker file.Service) *service {
-	return &service{fileWalker: fileWalker}
+func NewService(file file.Service, schema schema.Service) *service {
+	return &service{
+		file:   file,
+		schema: schema,
+	}
 }
 
 func (s *service) getObjectTypeFromDir(objectTypeDir, objectName string) (int, error) {
@@ -39,28 +45,6 @@ func (s *service) writeError(obj *domain.OracleObject, err error) {
 	}
 }
 
-func (s *service) parseSchema(schemaStr string) map[domain.ServerSchema]struct{} {
-	schemaStr = strings.ToLower(schemaStr)
-	schemaStr = strings.Replace(schemaStr, "schema", "", -1)
-	schemaStr = strings.Replace(schemaStr, ":", "", -1)
-	schemaStr = strings.Replace(schemaStr, " ", "", -1)
-	schemaStr = strings.Replace(schemaStr, "--", "", -1)
-	schemaStr = strings.Replace(schemaStr, "/", ",", -1)
-	schemaStr = strings.Replace(schemaStr, "\\", ",", -1)
-	if len(schemaStr) > 0 {
-		parts := strings.Split(schemaStr, ",")
-		result := make(map[domain.ServerSchema]struct{})
-		for _, val := range parts {
-			serverSchema, err := domain.GetServerSchemaBySchemaStrItem(val)
-			if err == nil {
-				result[serverSchema] = struct{}{}
-			}
-		}
-		return result
-	}
-	return nil
-}
-
 func (s *service) fileSuitable(rootDir, installDir, path string) bool {
 	parts := strings.Split(strings.Replace(path, rootDir, "", -1), string(os.PathSeparator))
 	notInInstall := strings.ToLower(parts[0]) == "install" && (!strings.HasPrefix(path, installDir))
@@ -72,7 +56,7 @@ func (s *service) fileSuitable(rootDir, installDir, path string) bool {
 
 func (s *service) resolveAdditionalPathInfo(oracleObj *domain.OracleObject) {
 	var err error
-	if !s.fileWalker.CheckFileExists(oracleObj.File.FileDetails.Path) && oracleObj.File.FileDetails.GitDetails.Action != domain.DeleteAction {
+	if !s.file.CheckFileExists(oracleObj.File.FileDetails.Path) && oracleObj.File.FileDetails.GitDetails.Action != domain.DeleteAction {
 		s.writeError(oracleObj, domain.FileNotExists)
 	}
 
@@ -92,12 +76,12 @@ func (s *service) resolveAdditionalPathInfo(oracleObj *domain.OracleObject) {
 }
 
 func (s *service) addSchema(oracleObj *domain.OracleObject) {
-	serverSchema, err := s.fileWalker.SearchStrInFile("schema", oracleObj.File.FileDetails.Path)
+	serverSchemaAliasLine, err := s.file.SearchStrInFile("schema", oracleObj.File.FileDetails.Path)
 	if err != nil {
 		s.writeError(oracleObj, domain.SchemaNotFound)
 	}
 
-	for key := range s.parseSchema(serverSchema) {
+	for key := range s.schema.ParseSchemaAliasLine(serverSchemaAliasLine) {
 		oracleObj.ServerSchemaList = append(oracleObj.ServerSchemaList, key)
 	}
 

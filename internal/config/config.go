@@ -3,11 +3,12 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/VadimGossip/gitPatchTool/internal/domain"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"os"
 	"strings"
+
+	"github.com/spf13/viper"
+
+	"github.com/VadimGossip/gitPatchTool/internal/domain"
 )
 
 func parseConfigFile(configDir string) error {
@@ -21,11 +22,44 @@ func parseConfigFile(configDir string) error {
 }
 
 func unmarshal(cfg *domain.Config) error {
-	if err := viper.UnmarshalKey("work_options", &cfg); err != nil {
+	var err error
+	if err = viper.UnmarshalKey("work_options", &cfg); err != nil {
 		return err
 	}
-	if err := viper.UnmarshalKey("work_options.path", &cfg.Path); err != nil {
+	if err = viper.UnmarshalKey("work_options.path", &cfg.Path); err != nil {
 		return err
+	}
+	if err = viper.UnmarshalKey("dictionaries.server_schema", &cfg.Dictionaries.ServerSchema); err != nil {
+		return err
+	}
+
+	if err = viper.UnmarshalKey("dictionaries.server_schema", &cfg.Dictionaries.ServerSchema); err != nil {
+		return err
+	}
+
+	cfg.Dictionaries.ServerSchemaAlias = make(map[domain.ServerSchema]string)
+	for key, val := range cfg.Dictionaries.ServerSchema {
+		cfg.Dictionaries.ServerSchemaAlias[domain.ServerSchema{Server: val.Server, Schema: val.Schema}] = key
+	}
+
+	var installFilename domain.ServerSchemaFilenameList
+	if err = viper.UnmarshalKey("dictionaries.server_schema_filename_list.install", &installFilename); err != nil {
+		return err
+	}
+
+	cfg.Dictionaries.InstallFilename, err = installFilename.BuildDictionary()
+	if err != nil {
+		return fmt.Errorf("install filename dictionary build error %s", err)
+	}
+
+	migrationFilename := make(domain.ServerSchemaFilenameList, 0)
+	if err = viper.UnmarshalKey("dictionaries.server_schema_filename_list.migration", &migrationFilename); err != nil {
+		return err
+	}
+
+	cfg.Dictionaries.MigrationFilename, err = migrationFilename.BuildDictionary()
+	if err != nil {
+		return fmt.Errorf("migration filename dictionary build  error %s", err)
 	}
 
 	return nil
@@ -48,21 +82,45 @@ func checkAndFixPaths(cfg *domain.Config) error {
 	return nil
 }
 
+func validate(cfg *domain.Config) error {
+	if len(cfg.Dictionaries.ServerSchema) == 0 {
+		return fmt.Errorf("empty server schema dictionary")
+	}
+
+	for key, val := range cfg.Dictionaries.ServerSchema {
+		if key == "" {
+			return fmt.Errorf("empty key of server schema dictionary")
+		}
+
+		if val.Server == "" {
+			return fmt.Errorf("empty value server of schema dictionary")
+		}
+
+		if val.Schema == "" {
+			return fmt.Errorf("empty value schema of schema dictionary")
+		}
+	}
+
+	return nil
+}
+
 func Init(configDir string) (*domain.Config, error) {
 	viper.SetConfigName("config")
 	if err := parseConfigFile(configDir); err != nil {
 		return nil, err
 	}
 
-	var cfg domain.Config
-	if err := unmarshal(&cfg); err != nil {
+	cfg := &domain.Config{}
+	if err := unmarshal(cfg); err != nil {
 		return nil, err
 	}
 
-	if err := checkAndFixPaths(&cfg); err != nil {
+	if err := validate(cfg); err != nil {
 		return nil, err
 	}
-	logrus.Infof("Config %v", cfg)
 
-	return &cfg, nil
+	if err := checkAndFixPaths(cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }

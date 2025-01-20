@@ -2,14 +2,16 @@ package writer
 
 import (
 	"fmt"
-	"github.com/VadimGossip/gitPatchTool/internal/domain"
-	"github.com/VadimGossip/gitPatchTool/internal/file"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/VadimGossip/gitPatchTool/internal/domain"
+	"github.com/VadimGossip/gitPatchTool/internal/file"
+	"github.com/VadimGossip/gitPatchTool/internal/oratool/schema"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type Service interface {
@@ -17,13 +19,17 @@ type Service interface {
 }
 
 type service struct {
-	file file.Service
+	file   file.Service
+	schema schema.Service
 }
 
 var _ Service = (*service)(nil)
 
-func NewService(file file.Service) *service {
-	return &service{file: file}
+func NewService(file file.Service, schema schema.Service) *service {
+	return &service{
+		file:   file,
+		schema: schema,
+	}
 }
 
 type typeAction struct {
@@ -324,12 +330,12 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 		for _, serverSchema := range obj.ServerSchemaList {
 			var installFileName string
 			if obj.ObjectType != domain.OracleScriptsMigrationType {
-				installFileName = domain.ServerSchemaInstallFilenameDict[serverSchema]
+				installFileName = s.schema.GetInstallFilename(serverSchema)
 			} else {
-				installFileName = domain.ServerSchemaMigrationFilenameDict[serverSchema]
+				installFileName = s.schema.GetMigrationFilename(serverSchema)
 			}
 
-			schemaStrItem := cases.Title(language.English, cases.Compact).String(domain.ServerSchemaSchemaStrItemDict[serverSchema])
+			schemaStrItem := cases.Title(language.English, cases.Compact).String(s.schema.GetSchemaAlias(serverSchema))
 			if installFileName != "" {
 				objInstall[oiKey{filename: installFileName, schemaStrItem: schemaStrItem}] = append(objInstall[oiKey{filename: installFileName, schemaStrItem: schemaStrItem}], obj)
 			}

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 )
 
 const (
@@ -36,8 +37,45 @@ var SchemaNotFound = errors.New("can't parse schema from file")
 var UnknownSchemaStrItem = errors.New("unknown schema str item")
 
 type ServerSchema struct {
-	Server string
-	Schema string
+	Server string `mapstructure:"server"`
+	Schema string `mapstructure:"schema"`
+}
+
+type ServerSchemaFilename struct {
+	Server   string
+	Schema   string
+	Filename string
+}
+
+type ServerSchemaFilenameList []ServerSchemaFilename
+
+func (s ServerSchemaFilenameList) BuildDictionary() (map[ServerSchema]string, error) {
+	if len(s) == 0 {
+		return nil, fmt.Errorf("empty server schema filename list")
+	}
+
+	result := make(map[ServerSchema]string)
+
+	for idx := range s {
+		if s[idx].Server == "" {
+			return nil, fmt.Errorf("empty server")
+		}
+
+		if s[idx].Schema == "" {
+			return nil, fmt.Errorf("empty schema")
+		}
+
+		if s[idx].Filename == "" {
+			return nil, fmt.Errorf("empty filename")
+		}
+
+		result[ServerSchema{
+			Server: s[idx].Server,
+			Schema: s[idx].Schema,
+		}] = s[idx].Filename
+	}
+
+	return result, nil
 }
 
 type OracleObject struct {
@@ -49,119 +87,6 @@ type OracleObject struct {
 	File             OracleFile
 	Errors           []string
 	InstallOrder     int
-}
-
-type OracleObjectServerSchema struct {
-	server string
-	schema string
-}
-
-var SchemaStrItemServerSchemaDict = map[string]ServerSchema{
-	"core": {
-		Server: "core",
-		Schema: "vtbs",
-	},
-	"charger": {
-		Server: "hpffm",
-		Schema: "vtbs",
-	},
-	"hpffm": {
-		Server: "hpffm",
-		Schema: "vtbs",
-	},
-	"vtbs_bi": {
-		Server: "hpffm",
-		Schema: "vtbs_bi",
-	},
-	"vtbs_x_alaris": {
-		Server: "hpffm",
-		Schema: "vtbs_x_alaris",
-	},
-	"xalaris": {
-		Server: "hpffm",
-		Schema: "vtbs_x_alaris",
-	},
-	"adesk": {
-		Server: "hpffm",
-		Schema: "vtbs_adesk",
-	},
-	"vtbs_adesk": {
-		Server: "hpffm",
-		Schema: "vtbs_adesk",
-	},
-	"reporter": {
-		Server: "hpffm",
-		Schema: "vtbs_adesk",
-	},
-}
-
-var ServerSchemaSchemaStrItemDict = map[ServerSchema]string{
-	ServerSchema{
-		Server: "core",
-		Schema: "vtbs",
-	}: "core",
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs",
-	}: "charger",
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs_adesk",
-	}: "vtbs_adesk",
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs_x_alaris",
-	}: "vtbs_x_alaris",
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs_bi",
-	}: "vtbs_bi",
-}
-
-var ServerSchemaInstallFilenameDict = map[ServerSchema]string{
-	ServerSchema{
-		Server: "core",
-		Schema: "vtbs",
-	}: VtbsCoreInstallName,
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs",
-	}: VtbsHpffmInstallName,
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs_adesk",
-	}: VtbsAdeskHpffmInstallName,
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs_x_alaris",
-	}: VtbsXAlarisHpffmInstallName,
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs_bi",
-	}: VtbsBiHpffmInstallName,
-}
-
-var ServerSchemaMigrationFilenameDict = map[ServerSchema]string{
-	ServerSchema{
-		Server: "core",
-		Schema: "vtbs",
-	}: VtbsCoreMigrationName,
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs",
-	}: VtbsHpffmMigrationName,
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs_adesk",
-	}: VtbsAdeskHpffmMigrationName,
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs_x_alaris",
-	}: VtbsXAlarisHpffmMigrationName,
-	ServerSchema{
-		Server: "hpffm",
-		Schema: "vtbs_bi",
-	}: VtbsBiHpffmMigrationName,
 }
 
 var DirOracleObjectTypeDict = map[string]int{
@@ -214,11 +139,4 @@ var OracleObjectTypeDirDict = map[int]string{
 	OracleScriptsBeforeType:    "scripts_before",
 	OracleScriptsAfterType:     "scripts_after",
 	OracleScriptsMigrationType: "scripts_migration",
-}
-
-func GetServerSchemaBySchemaStrItem(schemaStrItem string) (ServerSchema, error) {
-	if val, ok := SchemaStrItemServerSchemaDict[schemaStrItem]; ok {
-		return val, nil
-	}
-	return ServerSchema{}, UnknownSchemaStrItem
 }

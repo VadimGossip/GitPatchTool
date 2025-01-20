@@ -4,3 +4,51 @@ work_options:
   path:
     installDir: e:\WorkSpace\tj-oracle\install\2023ww09-10\ # directory where we will put install files
     rootDir: e:\WorkSpace\tj-oracle\ # directory from where we get oracle objects
+
+dictionaries:
+  server_schema:
+    vtbs:
+      server: "core"
+      schema: "vtbs"
+    vtbs_charger:
+      server: "core"
+      schema: "vtbs_charger"
+    vtbs_adesk:
+      server: "core"
+      schema: "vtbs_adesk"
+    vtbs_x_alaris:
+      server: "core"
+      schema: "vtbs_x_alaris"
+    vtbs_bi:
+      server: "core"
+      schema: "vtbs_bi"
+    vtbs_core:
+      server: "core"
+      schema: "vtbs_core"
+    core_monitoring:
+      server: "core"
+      schema: "core_monitoring"
+    vtbs_pwp:
+      server: "core"
+      schema: "vtbs_pwp"
+  server_schema_filename_list:
+      install: [
+          {server: "core", schema: "vtbs", filename: "10_VTBS.sql"},
+          {server: "core", schema: "vtbs_charger", filename: "20_VTBS_CHARGER.sql"},
+          {server: "core", schema: "vtbs_adesk", filename: "30_VTBS_ADESK.sql"},
+          {server: "core", schema: "vtbs_x_alaris", filename: "40_VTBS_X_ALARIS.sql"},
+          {server: "core", schema: "vtbs_bi", filename: "50_VTBS_BI.sql"},
+          {server: "core", schema: "vtbs_core", filename: "50_VTBS_CORE.sql"},
+          {server: "core", schema: "core_monitoring", filename: "60_CORE_MONITORING.sql"},
+          {server: "core", schema: "vtbs_pwp", filename: "70_VTBS_PWP.sql"}
+        ]
+      migration: [
+          { server: "core", schema: "vtbs", filename: "91_VTBS_MIGRATION.sql" },
+          { server: "core", schema: "vtbs_charger", filename: "92_VTBS_CHARGER_MIGRATION.sql" },
+          { server: "core", schema: "vtbs_adesk", filename: "93_VTBS_ADESK_MIGRATION.sql" },
+          { server: "core", schema: "vtbs_x_alaris", filename: "94_VTBS_X_ALARIS_MIGRATION.sql" },
+          { server: "core", schema: "vtbs_bi", filename: "95_VTBS_BI_MIGRATION.sql" },
+          { server: "core", schema: "vtbs_core", filename: "96_VTBS_CORE_MIGRATION.sql" },
+          { server: "core", schema: "core_monitoring", filename: "97_CORE_MONITORING_MIGRATION.sql" },
+          { server: "core", schema: "vtbs_pwp", filename: "98_VTBS_PWP_MIGRATION.sql" }
+        ]

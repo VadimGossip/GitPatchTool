@@ -1,10 +1,11 @@
 package app
 
 import (
+	"os"
+
 	"github.com/VadimGossip/gitPatchTool/internal/config"
 	"github.com/VadimGossip/gitPatchTool/internal/domain"
 	"github.com/sirupsen/logrus"
-	"os"
 )
 
 func init() {
