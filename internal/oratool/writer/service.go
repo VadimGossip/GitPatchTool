@@ -160,10 +160,6 @@ func (s *service) sortOracleObjects(oracleObjects []domain.OracleObject) {
 				(oracleObjects[i].ObjectType != domain.OracleScriptsMigrationType && oracleObjects[j].ObjectType == domain.OracleScriptsMigrationType)
 		}
 
-		if oracleObjects[i].EpicModuleName != oracleObjects[j].EpicModuleName {
-			return oracleObjects[i].EpicModuleName < oracleObjects[j].EpicModuleName
-		}
-
 		if oracleObjects[i].EpicModuleName == oracleObjects[j].EpicModuleName && oracleObjects[i].ModuleName != oracleObjects[j].ModuleName {
 			return oracleObjects[i].ModuleName < oracleObjects[j].ModuleName
 		}
@@ -342,7 +338,6 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 		}
 	}
 
-	var curModuleH, prevModuleH, curObjectTypeH, prevObjectTypeH string
 	for key, objI := range objInstall {
 		s.sortOracleObjects(objI)
 		addToFile := s.file.CheckFileExists(installDir + key.filename)
@@ -354,6 +349,8 @@ func (s *service) formInstallFiles(rootDir, installDir, commitMsg string, oracle
 			installFileLines[key.filename] = append(installFileLines[key.filename], s.createInstallFileHeader(key.filename, key.schemaStrItem)...)
 		}
 		installFileLines[key.filename] = append(installFileLines[key.filename], commitMsg)
+
+		var curModuleH, prevModuleH, curObjectTypeH, prevObjectTypeH string
 		for idx := range objI {
 			curModuleH = s.formModuleHeader(objI[idx])
 			curObjectTypeH = s.formObjectTypeHeader(objI[idx])
